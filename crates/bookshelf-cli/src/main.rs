@@ -219,6 +219,19 @@ async fn cmd_enrich(pool: &db::DbPool) -> anyhow::Result<()> {
                                 found_isbn,
                                 title
                             );
+                            // AC-41: persist the discovered ISBN to the DB before proceeding
+                            let isbn_update = bookshelf_core::db::EnrichmentUpdate {
+                                isbn: Some(found_isbn.clone()),
+                                ..Default::default()
+                            };
+                            if let Err(e) =
+                                db::apply_enrichment(pool, row.id, &isbn_update).await
+                            {
+                                eprintln!(
+                                    "WARNING: failed to persist discovered ISBN for id={}: {e}",
+                                    row.id
+                                );
+                            }
                             isbn = Some(found_isbn);
                         }
                         Ok(None) => {}

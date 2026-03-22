@@ -246,6 +246,45 @@ async fn test_enrich_openlibrary_http_error_returns_err() {
 }
 
 // ---------------------------------------------------------------------------
+// AC-41: Discovered ISBN from title+author search is persisted to the DB
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_discovered_isbn_is_persisted_to_db() {
+    // Simulate a row with no ISBN (as returned by editions_needing_enrichment)
+    let (pool, _db_tmp) = temp_pool().await;
+    let meta = bookshelf_core::epub::EpubMeta {
+        title: Some("The Hobbit".to_string()),
+        authors: Some("J.R.R. Tolkien".to_string()),
+        isbn: None,
+        source_path: "/tmp/hobbit_no_isbn.epub".to_string(),
+        ..Default::default()
+    };
+    let edition_id = db::upsert_edition(&pool, &meta).await.unwrap();
+
+    // Verify no ISBN is set initially
+    let row_before = db::get_edition(&pool, edition_id).await.unwrap().unwrap();
+    assert!(row_before.isbn.is_none(), "isbn should start as NULL");
+
+    // Simulate the fix: persist the discovered ISBN via apply_enrichment
+    let isbn_update = EnrichmentUpdate {
+        isbn: Some("9780261102217".to_string()),
+        ..Default::default()
+    };
+    db::apply_enrichment(&pool, edition_id, &isbn_update).await.unwrap();
+
+    // Verify ISBN is now stored and visible
+    let row_after = db::get_edition(&pool, edition_id).await.unwrap().unwrap();
+    assert_eq!(
+        row_after.isbn.as_deref(),
+        Some("9780261102217"),
+        "discovered ISBN must be persisted to editions.isbn (AC-41)"
+    );
+    // enrichment_attempted remains 0 — the full enrichment has not completed yet
+    assert_eq!(row_after.enrichment_attempted, 0);
+}
+
+// ---------------------------------------------------------------------------
 // AC-41: Title+author fallback finds ISBN-13
 // ---------------------------------------------------------------------------
 
