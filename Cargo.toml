@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "crates/bookshelf-core",
+    "crates/bookshelf-cli",
+]
+resolver = "2"
