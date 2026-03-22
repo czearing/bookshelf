@@ -170,6 +170,12 @@ async fn test_enrich_falls_back_to_google_books() {
 
 // ---------------------------------------------------------------------------
 // AC-40: Both sources empty → enrichment_attempted = 1, enriched_at = NULL
+//
+// Resolution of Open Question 1 (requirements.md): option (a) was chosen.
+// When both OL and Google Books return no data, `enrichment_attempted` is set
+// to 1 and `enriched_at` remains NULL, rather than using a "+no_data" suffix
+// on `enriched_at`. The separate integer column is the authoritative sentinel
+// that prevents repeat API calls on subsequent runs.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
@@ -318,5 +324,54 @@ async fn test_find_isbn_by_title_author_returns_isbn13() {
         result.as_deref(),
         Some("9780261102217"),
         "should return the first ISBN-13 from the top search result"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// AC-45: update_work_ol_id merges two editions under one work when both are
+// enriched to the same openlibrary_work_id.
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_update_work_ol_id_merges_editions() {
+    let (pool, _db_tmp) = temp_pool().await;
+
+    // Insert two editions, each with their own work row.
+    let edition_a = insert_test_edition(&pool, "9780000000001", "/tmp/book_a.epub").await;
+    let edition_b = insert_test_edition(&pool, "9780000000002", "/tmp/book_b.epub").await;
+
+    let work_a = db::insert_work(&pool, "Work A", "Author A").await.unwrap();
+    let work_b = db::insert_work(&pool, "Work B", "Author B").await.unwrap();
+
+    db::set_edition_work_id(&pool, edition_a, work_a).await.unwrap();
+    db::set_edition_work_id(&pool, edition_b, work_b).await.unwrap();
+
+    // Both editions enrich to the same OL work ID.
+    let ol_id = "/works/OL99999W";
+
+    // First edition's work gets the OL ID set (no conflict yet).
+    db::update_work_ol_id(&pool, work_a, ol_id).await.unwrap();
+
+    // Second edition's work is enriched to the same OL ID → merge triggered.
+    db::update_work_ol_id(&pool, work_b, ol_id).await.unwrap();
+
+    // Both editions must now share the same work_id.
+    let row_a = db::get_edition(&pool, edition_a).await.unwrap().unwrap();
+    let row_b = db::get_edition(&pool, edition_b).await.unwrap().unwrap();
+
+    assert!(row_a.work_id.is_some(), "edition_a must have a work_id");
+    assert!(row_b.work_id.is_some(), "edition_b must have a work_id");
+    assert_eq!(
+        row_a.work_id, row_b.work_id,
+        "both editions must share the same work_id after OL ID merge"
+    );
+
+    // The works table must have exactly one row with that OL ID.
+    let surviving_work_id = row_a.work_id.unwrap();
+    let found = db::find_work_by_ol_id(&pool, ol_id).await.unwrap();
+    assert_eq!(
+        found,
+        Some(surviving_work_id),
+        "works table must contain exactly one row with the OL work ID"
     );
 }

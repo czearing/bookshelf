@@ -403,4 +403,224 @@ mod tests {
         );
         assert!(path_str.ends_with("library.db"));
     }
+
+    // -----------------------------------------------------------------------
+    // AC-52: unit tests for every previously-untested public function
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_find_work_by_ol_id_returns_none_when_absent() {
+        let (pool, _tmp) = open_temp_db().await;
+        let result = find_work_by_ol_id(&pool, "/works/OL_MISSING").await.unwrap();
+        assert!(result.is_none(), "should return None when OL ID is not in works table");
+    }
+
+    #[tokio::test]
+    async fn test_find_work_by_ol_id_returns_id_when_present() {
+        let (pool, _tmp) = open_temp_db().await;
+        let work_id = insert_work(&pool, "Test Work", "Test Author").await.unwrap();
+        // Set the OL ID on this work row.
+        sqlx::query("UPDATE works SET openlibrary_work_id = ? WHERE id = ?")
+            .bind("/works/OL123W")
+            .bind(work_id)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let found = find_work_by_ol_id(&pool, "/works/OL123W").await.unwrap();
+        assert_eq!(found, Some(work_id));
+    }
+
+    #[tokio::test]
+    async fn test_set_edition_work_id_updates_row() {
+        let (pool, _tmp) = open_temp_db().await;
+        let meta = EpubMeta {
+            title: Some("Work ID Test".to_string()),
+            authors: Some("Author".to_string()),
+            source_path: "/tmp/work_id_test.epub".to_string(),
+            ..Default::default()
+        };
+        let edition_id = upsert_edition(&pool, &meta).await.unwrap();
+
+        // work_id should be NULL initially
+        let before = get_edition(&pool, edition_id).await.unwrap().unwrap();
+        assert!(before.work_id.is_none());
+
+        let work_id = insert_work(&pool, "Work ID Test", "Author").await.unwrap();
+        set_edition_work_id(&pool, edition_id, work_id).await.unwrap();
+
+        let after = get_edition(&pool, edition_id).await.unwrap().unwrap();
+        assert_eq!(after.work_id, Some(work_id));
+    }
+
+    #[tokio::test]
+    async fn test_editions_needing_enrichment_returns_unattempted_only() {
+        let (pool, _tmp) = open_temp_db().await;
+
+        let meta_a = EpubMeta {
+            title: Some("Needs Enrichment".to_string()),
+            authors: Some("Author A".to_string()),
+            source_path: "/tmp/needs_enrich.epub".to_string(),
+            ..Default::default()
+        };
+        let meta_b = EpubMeta {
+            title: Some("Already Enriched".to_string()),
+            authors: Some("Author B".to_string()),
+            source_path: "/tmp/already_enriched.epub".to_string(),
+            ..Default::default()
+        };
+
+        let id_a = upsert_edition(&pool, &meta_a).await.unwrap();
+        let id_b = upsert_edition(&pool, &meta_b).await.unwrap();
+
+        // Mark edition B as already attempted
+        let update = EnrichmentUpdate {
+            enrichment_attempted: 1,
+            ..Default::default()
+        };
+        apply_enrichment(&pool, id_b, &update).await.unwrap();
+
+        let needing = editions_needing_enrichment(&pool).await.unwrap();
+        let ids: Vec<i64> = needing.iter().map(|r| r.id).collect();
+        assert!(ids.contains(&id_a), "unattempted edition must be returned");
+        assert!(!ids.contains(&id_b), "already-attempted edition must be excluded");
+    }
+
+    #[tokio::test]
+    async fn test_list_editions_returns_all_ordered_by_id() {
+        let (pool, _tmp) = open_temp_db().await;
+
+        for i in 0..3u8 {
+            let meta = EpubMeta {
+                title: Some(format!("Book {i}")),
+                authors: Some("Author".to_string()),
+                source_path: format!("/tmp/list_test_{i}.epub"),
+                ..Default::default()
+            };
+            upsert_edition(&pool, &meta).await.unwrap();
+        }
+
+        let editions = list_editions(&pool).await.unwrap();
+        assert_eq!(editions.len(), 3);
+        // Must be ordered by id ascending
+        assert!(editions[0].id < editions[1].id);
+        assert!(editions[1].id < editions[2].id);
+    }
+
+    #[tokio::test]
+    async fn test_get_edition_returns_none_for_missing_id() {
+        let (pool, _tmp) = open_temp_db().await;
+        let result = get_edition(&pool, 9999).await.unwrap();
+        assert!(result.is_none(), "should return None for non-existent id");
+    }
+
+    #[tokio::test]
+    async fn test_get_edition_returns_row_for_existing_id() {
+        let (pool, _tmp) = open_temp_db().await;
+        let meta = EpubMeta {
+            title: Some("Get Edition Test".to_string()),
+            authors: Some("Author".to_string()),
+            source_path: "/tmp/get_edition_test.epub".to_string(),
+            ..Default::default()
+        };
+        let edition_id = upsert_edition(&pool, &meta).await.unwrap();
+        let row = get_edition(&pool, edition_id).await.unwrap();
+        assert!(row.is_some());
+        assert_eq!(row.unwrap().title.as_deref(), Some("Get Edition Test"));
+    }
+
+    #[tokio::test]
+    async fn test_all_editions_for_dedup_returns_only_work_id_set_no_isbn() {
+        let (pool, _tmp) = open_temp_db().await;
+
+        // Edition with work_id and no ISBN — should appear in results
+        let meta_a = EpubMeta {
+            title: Some("Dedup Candidate".to_string()),
+            authors: Some("Author".to_string()),
+            source_path: "/tmp/dedup_a.epub".to_string(),
+            ..Default::default()
+        };
+        let id_a = upsert_edition(&pool, &meta_a).await.unwrap();
+        let work_id = insert_work(&pool, "Dedup Candidate", "Author").await.unwrap();
+        set_edition_work_id(&pool, id_a, work_id).await.unwrap();
+
+        // Edition with work_id AND isbn — must be excluded
+        let meta_b = EpubMeta {
+            title: Some("Has ISBN".to_string()),
+            authors: Some("Author".to_string()),
+            isbn: Some("9781000000001".to_string()),
+            source_path: "/tmp/dedup_b.epub".to_string(),
+            ..Default::default()
+        };
+        let id_b = upsert_edition(&pool, &meta_b).await.unwrap();
+        let work_id_b = insert_work(&pool, "Has ISBN", "Author").await.unwrap();
+        set_edition_work_id(&pool, id_b, work_id_b).await.unwrap();
+
+        // Edition with no work_id — must be excluded
+        let meta_c = EpubMeta {
+            title: Some("No Work".to_string()),
+            authors: Some("Author".to_string()),
+            source_path: "/tmp/dedup_c.epub".to_string(),
+            ..Default::default()
+        };
+        upsert_edition(&pool, &meta_c).await.unwrap();
+
+        let dedup_rows = all_editions_for_dedup(&pool).await.unwrap();
+        let ids: Vec<i64> = dedup_rows.iter().map(|r| r.id).collect();
+        assert!(ids.contains(&id_a), "edition with work_id and no isbn must be returned");
+        assert!(!ids.contains(&id_b), "edition with isbn must be excluded");
+    }
+
+    #[tokio::test]
+    async fn test_update_work_ol_id_sets_id_when_no_conflict() {
+        let (pool, _tmp) = open_temp_db().await;
+        let work_id = insert_work(&pool, "Some Work", "Some Author").await.unwrap();
+
+        update_work_ol_id(&pool, work_id, "/works/OL_NEW").await.unwrap();
+
+        let found = find_work_by_ol_id(&pool, "/works/OL_NEW").await.unwrap();
+        assert_eq!(found, Some(work_id));
+    }
+
+    #[tokio::test]
+    async fn test_update_work_ol_id_merges_when_duplicate_ol_id() {
+        let (pool, _tmp) = open_temp_db().await;
+
+        // Two distinct work rows
+        let work_a = insert_work(&pool, "Work A", "Author").await.unwrap();
+        let work_b = insert_work(&pool, "Work B", "Author").await.unwrap();
+
+        // Two editions, one per work
+        let meta_a = EpubMeta {
+            title: Some("Edition A".to_string()),
+            authors: Some("Author".to_string()),
+            source_path: "/tmp/merge_a.epub".to_string(),
+            ..Default::default()
+        };
+        let meta_b = EpubMeta {
+            title: Some("Edition B".to_string()),
+            authors: Some("Author".to_string()),
+            source_path: "/tmp/merge_b.epub".to_string(),
+            ..Default::default()
+        };
+        let ed_a = upsert_edition(&pool, &meta_a).await.unwrap();
+        let ed_b = upsert_edition(&pool, &meta_b).await.unwrap();
+        set_edition_work_id(&pool, ed_a, work_a).await.unwrap();
+        set_edition_work_id(&pool, ed_b, work_b).await.unwrap();
+
+        let ol_id = "/works/OL_MERGE";
+        // Set OL ID on first work — no conflict
+        update_work_ol_id(&pool, work_a, ol_id).await.unwrap();
+        // Set same OL ID on second work — merge triggered
+        update_work_ol_id(&pool, work_b, ol_id).await.unwrap();
+
+        // Both editions must share the same work_id
+        let row_a = get_edition(&pool, ed_a).await.unwrap().unwrap();
+        let row_b = get_edition(&pool, ed_b).await.unwrap().unwrap();
+        assert_eq!(row_a.work_id, row_b.work_id, "editions must share work_id after merge");
+
+        // Exactly one works row with this OL ID
+        let surviving = find_work_by_ol_id(&pool, ol_id).await.unwrap();
+        assert!(surviving.is_some());
+    }
 }
