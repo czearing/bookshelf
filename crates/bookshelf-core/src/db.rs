@@ -434,10 +434,21 @@ pub async fn update_want_isbn13(pool: &DbPool, id: i64, isbn13: &str) -> anyhow:
 }
 
 /// Return all `want_list` rows, optionally filtered by `source`, ordered by `id`.
+/// Returns `Err` if `source_filter` is `Some` but not a recognised valid source.
 pub async fn list_want(
     pool: &DbPool,
     source_filter: Option<&str>,
 ) -> anyhow::Result<Vec<WantRow>> {
+    if let Some(src) = source_filter {
+        if !VALID_SOURCES.contains(&src) {
+            anyhow::bail!(
+                "list_want: invalid source {:?}; must be one of {:?}",
+                src,
+                VALID_SOURCES
+            );
+        }
+    }
+
     let rows = if let Some(src) = source_filter {
         sqlx::query("SELECT * FROM want_list WHERE source = ? ORDER BY id")
             .bind(src)
@@ -666,16 +677,18 @@ pub async fn insert_followed_author(
     Ok(result.last_insert_rowid())
 }
 
-/// Return the `followed_authors` row with `name = ?`, or `None`.
+/// Return the `followed_authors` row with `name = ?` (case-insensitive), or `None`.
 pub async fn find_followed_author_by_name(
     pool: &DbPool,
     name: &str,
 ) -> anyhow::Result<Option<FollowedAuthorRow>> {
-    let row = sqlx::query("SELECT * FROM followed_authors WHERE name = ? LIMIT 1")
-        .bind(name)
-        .fetch_optional(pool)
-        .await
-        .context("find_followed_author_by_name")?;
+    let row = sqlx::query(
+        "SELECT * FROM followed_authors WHERE LOWER(name) = LOWER(?) LIMIT 1",
+    )
+    .bind(name)
+    .fetch_optional(pool)
+    .await
+    .context("find_followed_author_by_name")?;
 
     row.map(row_to_followed_author).transpose()
 }

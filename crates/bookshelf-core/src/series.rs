@@ -67,6 +67,16 @@ pub fn compute_series_views(editions: &[EditionRow]) -> Vec<SeriesView> {
             .filter_map(|e| e.series_position.clone())
             .collect();
 
+        // If all series_position values are NULL, treat as non-numeric (no gap detection).
+        if positions.is_empty() {
+            views.push(SeriesView {
+                series_name: series_name.clone(),
+                entries: vec![],
+                non_numeric: true,
+            });
+            continue;
+        }
+
         // Try to parse all positions as f64.
         let parsed: Option<Vec<f64>> = positions
             .iter()

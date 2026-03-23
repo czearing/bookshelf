@@ -1,5 +1,5 @@
 /// Integration tests for Phase 3 author-follow feature.
-use bookshelf_core::{db, epub::EpubMeta, follow};
+use bookshelf_core::{db, epub::EpubMeta, follow, grab};
 use tempfile::NamedTempFile;
 use wiremock::matchers::{method, path_regex, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -590,4 +590,261 @@ async fn test_follow_sync_partial_failure_continues() {
     let wants = db::list_want(&pool, None).await.unwrap();
     assert_eq!(wants.len(), 1);
     assert_eq!(wants[0].title, "Good Work");
+}
+
+// ---------------------------------------------------------------------------
+// Gap 2 — follow_add → grab full E2E test
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_follow_add_to_grab_e2e() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Insert 2 owned editions: Dune and The White Plague by Frank Herbert.
+    db::upsert_edition(
+        &pool,
+        &EpubMeta {
+            title: Some("Dune".to_string()),
+            authors: Some("Frank Herbert".to_string()),
+            isbn: Some("9780441013593".to_string()),
+            source_path: "/tmp/dune.epub".to_string(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    db::upsert_edition(
+        &pool,
+        &EpubMeta {
+            title: Some("The White Plague".to_string()),
+            authors: Some("Frank Herbert".to_string()),
+            isbn: Some("9780765320841".to_string()),
+            source_path: "/tmp/white_plague.epub".to_string(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    let server = MockServer::start().await;
+
+    // Mock author search returning Frank Herbert's OL key.
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search/authors\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            serde_json::json!({ "docs": [{ "key": "/authors/OL25386A" }] }),
+        ))
+        .mount(&server)
+        .await;
+
+    // Works page 2 (offset=50): empty — signals end of pagination.
+    Mock::given(method("GET"))
+        .and(path_regex(r"/authors/OL25386A/works\.json"))
+        .and(query_param("offset", "50"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            serde_json::json!({ "entries": [] }),
+        ))
+        .mount(&server)
+        .await;
+
+    // Works page 1 (offset=0): 3 works.
+    // "Dune" is owned (will be skipped by is_already_owned via fuzzy match).
+    // "Hellstrom's Hive" and "The Dosadi Experiment" are completely distinct titles
+    // that do not fuzzy-match the owned "Dune" or "The White Plague" strings.
+    Mock::given(method("GET"))
+        .and(path_regex(r"/authors/OL25386A/works\.json"))
+        .and(query_param("offset", "0"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "entries": [
+                { "title": "Dune", "key": "/works/OL102749W" },
+                { "title": "Hellstrom's Hive", "key": "/works/OL102750W" },
+                { "title": "The Dosadi Experiment", "key": "/works/OL102751W" }
+            ]
+        })))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    let result = follow::follow_add(&pool, &client, "Frank Herbert", &server.uri())
+        .await
+        .unwrap();
+
+    // "Dune" is owned → skipped by fuzzy match. 2 works queued.
+    assert_eq!(result, follow::FollowAddResult::Added { works_queued: 2 });
+
+    let wants = db::list_want(&pool, None).await.unwrap();
+    assert_eq!(wants.len(), 2, "exactly 2 unowned works must be in want_list");
+
+    let titles: Vec<&str> = wants.iter().map(|w| w.title.as_str()).collect();
+    assert!(titles.contains(&"Hellstrom's Hive"), "Hellstrom's Hive must be in want_list");
+    assert!(
+        titles.contains(&"The Dosadi Experiment"),
+        "The Dosadi Experiment must be in want_list"
+    );
+
+    // All queued with source = "author_follow".
+    assert!(
+        wants.iter().all(|w| w.source == "author_follow"),
+        "all entries must have source=author_follow"
+    );
+
+    // Grab list must include the 2 unowned works.
+    let grab_entries = grab::compute_grab_list(&pool, None).await.unwrap();
+    let grab_titles: Vec<&str> = grab_entries
+        .iter()
+        .filter_map(|e| e.title.as_deref())
+        .collect();
+
+    assert!(
+        grab_titles.contains(&"Hellstrom's Hive"),
+        "Hellstrom's Hive must appear in grab list"
+    );
+    assert!(
+        grab_titles.contains(&"The Dosadi Experiment"),
+        "The Dosadi Experiment must appear in grab list"
+    );
+
+    // "Dune" must NOT appear in grab list (it is owned).
+    assert!(
+        !grab_titles.contains(&"Dune"),
+        "Dune must not appear in grab list (owned)"
+    );
+
+    // Grab entries must have source = "author_follow".
+    for entry in &grab_entries {
+        assert_eq!(
+            entry.source, "author_follow",
+            "grab entry source must be author_follow"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Gap 3 — db::list_want source filter validation
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_list_want_source_filter_author_follow() {
+    let (pool, _tmp) = temp_pool().await;
+    let server = MockServer::start().await;
+
+    // Populate want_list with author_follow entries via follow_add.
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search/authors\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            serde_json::json!({ "docs": [{ "key": "/authors/OL99A" }] }),
+        ))
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/authors/OL99A/works\.json"))
+        .and(query_param("offset", "50"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            serde_json::json!({ "entries": [] }),
+        ))
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/authors/OL99A/works\.json"))
+        .and(query_param("offset", "0"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "entries": [
+                { "title": "Stranger in a Strange Land", "key": "/works/OL50W" },
+                { "title": "The Moon Is a Harsh Mistress", "key": "/works/OL51W" }
+            ]
+        })))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    follow::follow_add(&pool, &client, "Robert Heinlein", &server.uri())
+        .await
+        .unwrap();
+
+    // list_want with source="author_follow" must return the 2 queued entries.
+    let author_follow_entries = db::list_want(&pool, Some("author_follow")).await.unwrap();
+    assert_eq!(
+        author_follow_entries.len(),
+        2,
+        "list_want(author_follow) must return 2 entries"
+    );
+    assert!(
+        author_follow_entries.iter().all(|w| w.source == "author_follow"),
+        "all returned entries must have source=author_follow"
+    );
+
+    // list_want with source="series_fill" must return empty (no series_fill entries yet).
+    let series_fill_entries = db::list_want(&pool, Some("series_fill")).await.unwrap();
+    assert!(
+        series_fill_entries.is_empty(),
+        "list_want(series_fill) must return empty when no series_fill entries exist"
+    );
+
+    // list_want with source="invalid_source" must return Err (validation rejection).
+    let invalid_result = db::list_want(&pool, Some("invalid_source")).await;
+    assert!(
+        invalid_result.is_err(),
+        "list_want(invalid_source) must return Err"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Gap 6 — follow_add case sensitivity for duplicate detection
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_follow_add_case_insensitive_duplicate_detection() {
+    let (pool, _tmp) = temp_pool().await;
+    let server = MockServer::start().await;
+
+    // First call: "Frank Herbert" — should succeed and add the author.
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search/authors\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            serde_json::json!({ "docs": [{ "key": "/authors/OL25386A" }] }),
+        ))
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/authors/OL25386A/works\.json"))
+        .and(query_param("offset", "50"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            serde_json::json!({ "entries": [] }),
+        ))
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/authors/OL25386A/works\.json"))
+        .and(query_param("offset", "0"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            serde_json::json!({ "entries": [] }),
+        ))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+
+    let result1 = follow::follow_add(&pool, &client, "Frank Herbert", &server.uri())
+        .await
+        .unwrap();
+    assert_eq!(result1, follow::FollowAddResult::Added { works_queued: 0 });
+
+    // Second call: "frank herbert" (lowercase) — must return AlreadyFollowed.
+    let result2 = follow::follow_add(&pool, &client, "frank herbert", &server.uri())
+        .await
+        .unwrap();
+    assert_eq!(
+        result2,
+        follow::FollowAddResult::AlreadyFollowed,
+        "follow_add with different case must return AlreadyFollowed"
+    );
+
+    // Must be exactly 1 row in followed_authors.
+    let all = db::list_followed_authors(&pool).await.unwrap();
+    assert_eq!(all.len(), 1, "must be exactly 1 followed author after case-variant add");
 }
