@@ -617,6 +617,12 @@ async fn test_want_add_already_in_want_list() {
 
     let rows = db::list_want(&pool, None).await.unwrap();
     assert_eq!(rows.len(), 1, "must not insert a duplicate");
+    assert_eq!(rows[0].priority, 7, "priority must be updated to new value");
+    assert_eq!(
+        rows[0].notes.as_deref(),
+        Some("updated note"),
+        "notes must be updated to new value"
+    );
 }
 
 // ---------------------------------------------------------------------------

@@ -235,6 +235,8 @@ pub async fn import_goodreads_csv(
                 author.as_deref(),
                 isbn13.as_deref(),
                 book_id.as_deref(),
+                existing.priority,
+                existing.notes.as_deref(),
             )
             .await?;
             summary.imported += 1;
@@ -354,6 +356,8 @@ pub async fn import_openlibrary(
                     author.as_deref(),
                     None,
                     source_id.as_deref(),
+                    existing.priority,
+                    existing.notes.as_deref(),
                 )
                 .await?;
                 summary.imported += 1;
@@ -437,6 +441,8 @@ pub async fn import_text_file(
                 author.as_deref(),
                 None,
                 None,
+                existing.priority,
+                existing.notes.as_deref(),
             )
             .await?;
             summary.imported += 1;
@@ -525,7 +531,7 @@ pub async fn add_manual(
     }
 
     if let Some(existing) = find_existing_want(pool, title, author, isbn13).await? {
-        db::update_want(pool, existing.id, title, author, isbn13, None).await?;
+        db::update_want(pool, existing.id, title, author, isbn13, None, priority, notes).await?;
         return Ok(AddResult::AlreadyInWantList);
     }
 

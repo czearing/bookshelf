@@ -358,8 +358,9 @@ pub async fn insert_want(
     Ok(result.last_insert_rowid())
 }
 
-/// Update `title`, `author`, `isbn13`, and `source_id` of an existing `want_list` row.
-/// Does NOT modify `added_at`, `priority`, or `notes`.
+/// Update `title`, `author`, `isbn13`, `source_id`, `priority`, and `notes` of an existing
+/// `want_list` row.  Does NOT modify `added_at`.
+#[allow(clippy::too_many_arguments)]
 pub async fn update_want(
     pool: &DbPool,
     id: i64,
@@ -367,14 +368,18 @@ pub async fn update_want(
     author: Option<&str>,
     isbn13: Option<&str>,
     source_id: Option<&str>,
+    priority: i64,
+    notes: Option<&str>,
 ) -> anyhow::Result<()> {
     sqlx::query(
-        "UPDATE want_list SET title = ?, author = ?, isbn13 = ?, source_id = ? WHERE id = ?",
+        "UPDATE want_list SET title = ?, author = ?, isbn13 = ?, source_id = ?, priority = ?, notes = ? WHERE id = ?",
     )
     .bind(title)
     .bind(author)
     .bind(isbn13)
     .bind(source_id)
+    .bind(priority)
+    .bind(notes)
     .bind(id)
     .execute(pool)
     .await
