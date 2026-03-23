@@ -339,7 +339,14 @@ pub struct WantRow {
     pub notes: Option<String>,
 }
 
-const VALID_SOURCES: &[&str] = &["goodreads_csv", "openlibrary", "manual", "text_file"];
+const VALID_SOURCES: &[&str] = &[
+    "goodreads_csv",
+    "openlibrary",
+    "manual",
+    "text_file",
+    "author_follow",
+    "series_fill",
+];
 
 /// Insert one row into `want_list`. Returns the `last_insert_rowid`.
 #[allow(clippy::too_many_arguments)]
@@ -610,6 +617,124 @@ fn row_to_edition(row: sqlx::sqlite::SqliteRow) -> anyhow::Result<EditionRow> {
         enriched_at: row.try_get("enriched_at")?,
         enrichment_attempted: row.try_get("enrichment_attempted")?,
     })
+}
+
+// ---------------------------------------------------------------------------
+// followed_authors table: struct and CRUD functions
+// ---------------------------------------------------------------------------
+
+/// A row from the `followed_authors` table.
+#[derive(Debug, Clone)]
+pub struct FollowedAuthorRow {
+    pub id: i64,
+    pub name: String,
+    pub ol_key: Option<String>,
+    pub last_synced: Option<String>,
+    pub added_at: String,
+}
+
+/// Convert a raw `sqlx::sqlite::SqliteRow` into a `FollowedAuthorRow`.
+fn row_to_followed_author(row: sqlx::sqlite::SqliteRow) -> anyhow::Result<FollowedAuthorRow> {
+    Ok(FollowedAuthorRow {
+        id: row.try_get("id")?,
+        name: row.try_get("name")?,
+        ol_key: row.try_get("ol_key")?,
+        last_synced: row.try_get("last_synced")?,
+        added_at: row.try_get("added_at")?,
+    })
+}
+
+/// Insert a new row into `followed_authors`. Sets both `added_at` and
+/// `last_synced` to the current UTC timestamp. Returns `last_insert_rowid`.
+pub async fn insert_followed_author(
+    pool: &DbPool,
+    name: &str,
+    ol_key: Option<&str>,
+) -> anyhow::Result<i64> {
+    let now = Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let result = sqlx::query(
+        "INSERT INTO followed_authors (name, ol_key, last_synced, added_at) VALUES (?, ?, ?, ?)",
+    )
+    .bind(name)
+    .bind(ol_key)
+    .bind(&now)
+    .bind(&now)
+    .execute(pool)
+    .await
+    .context("insert_followed_author")?;
+
+    Ok(result.last_insert_rowid())
+}
+
+/// Return the `followed_authors` row with `name = ?`, or `None`.
+pub async fn find_followed_author_by_name(
+    pool: &DbPool,
+    name: &str,
+) -> anyhow::Result<Option<FollowedAuthorRow>> {
+    let row = sqlx::query("SELECT * FROM followed_authors WHERE name = ? LIMIT 1")
+        .bind(name)
+        .fetch_optional(pool)
+        .await
+        .context("find_followed_author_by_name")?;
+
+    row.map(row_to_followed_author).transpose()
+}
+
+/// Delete the `followed_authors` row with `name = ?`.
+/// Returns `true` if a row was deleted, `false` if not found.
+pub async fn delete_followed_author(pool: &DbPool, name: &str) -> anyhow::Result<bool> {
+    let result = sqlx::query("DELETE FROM followed_authors WHERE name = ?")
+        .bind(name)
+        .execute(pool)
+        .await
+        .context("delete_followed_author")?;
+    Ok(result.rows_affected() > 0)
+}
+
+/// Return all rows from `followed_authors` ordered by `name`.
+pub async fn list_followed_authors(pool: &DbPool) -> anyhow::Result<Vec<FollowedAuthorRow>> {
+    let rows = sqlx::query("SELECT * FROM followed_authors ORDER BY name")
+        .fetch_all(pool)
+        .await
+        .context("list_followed_authors")?;
+
+    rows.into_iter().map(row_to_followed_author).collect()
+}
+
+/// Update `ol_key` and `last_synced` on an existing `followed_authors` row.
+pub async fn update_followed_author_synced(
+    pool: &DbPool,
+    name: &str,
+    ol_key: Option<&str>,
+    last_synced: &str,
+) -> anyhow::Result<()> {
+    sqlx::query(
+        "UPDATE followed_authors SET ol_key = ?, last_synced = ? WHERE name = ?",
+    )
+    .bind(ol_key)
+    .bind(last_synced)
+    .bind(name)
+    .execute(pool)
+    .await
+    .context("update_followed_author_synced")?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Series DB query
+// ---------------------------------------------------------------------------
+
+/// Return all owned editions that have a non-NULL `series_name`, ordered by
+/// `series_name` then `series_position`.
+pub async fn editions_with_series(pool: &DbPool) -> anyhow::Result<Vec<EditionRow>> {
+    let rows = sqlx::query(
+        "SELECT * FROM editions WHERE owned = 1 AND series_name IS NOT NULL ORDER BY series_name, series_position",
+    )
+    .fetch_all(pool)
+    .await
+    .context("editions_with_series")?;
+
+    rows.into_iter().map(row_to_edition).collect()
 }
 
 #[cfg(test)]

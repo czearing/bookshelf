@@ -1,5 +1,5 @@
 use anyhow::Context;
-use bookshelf_core::{db, enrich, fuzzy, grab, scan, want};
+use bookshelf_core::{db, enrich, follow, fuzzy, grab, scan, series, want};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -32,6 +32,10 @@ enum Commands {
     Grab(GrabArgs),
     /// Display library statistics
     Stats,
+    /// Track authors on OpenLibrary and populate the want list with their works
+    Follow(FollowArgs),
+    /// Display series information and fill gaps from OpenLibrary
+    Series(SeriesArgs),
 }
 
 #[derive(Parser)]
@@ -150,6 +154,66 @@ struct GrabArgs {
     min_priority: Option<i64>,
 }
 
+// ---------------------------------------------------------------------------
+// Follow subcommand clap structs
+// ---------------------------------------------------------------------------
+
+#[derive(Parser)]
+struct FollowArgs {
+    #[command(subcommand)]
+    command: FollowCommands,
+}
+
+#[derive(Subcommand)]
+enum FollowCommands {
+    /// Add an author to the follow list and import their catalog
+    Add(FollowAddArgs),
+    /// Remove an author from the follow list
+    Remove(FollowRemoveArgs),
+    /// List followed authors
+    List,
+    /// Re-sync all followed authors from OpenLibrary
+    Sync,
+}
+
+#[derive(Parser)]
+struct FollowAddArgs {
+    /// Author name to follow
+    author: String,
+}
+
+#[derive(Parser)]
+struct FollowRemoveArgs {
+    /// Author name to unfollow
+    author: String,
+}
+
+// ---------------------------------------------------------------------------
+// Series subcommand clap structs
+// ---------------------------------------------------------------------------
+
+#[derive(Parser)]
+struct SeriesArgs {
+    /// Subcommand (omit to show series status)
+    #[command(subcommand)]
+    command: Option<SeriesCommands>,
+}
+
+#[derive(Subcommand)]
+enum SeriesCommands {
+    /// Fill gaps in owned series by querying OpenLibrary
+    Fill,
+    /// List series status in machine-readable format
+    List(SeriesListArgs),
+}
+
+#[derive(Parser)]
+struct SeriesListArgs {
+    /// Output format: text (default), json, or csv
+    #[arg(long, default_value = "text")]
+    output: String,
+}
+
 fn main() {
     if let Err(e) = run() {
         eprintln!("Error: {e:?}");
@@ -178,6 +242,8 @@ async fn async_run(cli: Cli) -> anyhow::Result<()> {
         Commands::Want(args) => cmd_want(&pool, args).await?,
         Commands::Grab(args) => cmd_grab(&pool, args).await?,
         Commands::Stats => cmd_stats(&pool).await?,
+        Commands::Follow(args) => cmd_follow(&pool, args).await?,
+        Commands::Series(args) => cmd_series(&pool, args).await?,
     }
 
     Ok(())
@@ -532,7 +598,14 @@ async fn cmd_want_add(pool: &db::DbPool, args: WantAddArgs) -> anyhow::Result<()
 }
 
 async fn cmd_want_list(pool: &db::DbPool, args: WantListArgs) -> anyhow::Result<()> {
-    const VALID_SOURCES: &[&str] = &["goodreads_csv", "openlibrary", "manual", "text_file"];
+    const VALID_SOURCES: &[&str] = &[
+        "goodreads_csv",
+        "openlibrary",
+        "manual",
+        "text_file",
+        "author_follow",
+        "series_fill",
+    ];
 
     if let Some(ref src) = args.source {
         if !VALID_SOURCES.contains(&src.as_str()) {
@@ -659,6 +732,134 @@ async fn cmd_stats(pool: &db::DbPool) -> anyhow::Result<()> {
     println!("    Text file:       {:>6}", s.want_by_text_file);
     println!();
     println!("Grab List (not owned):{:>5}", s.grab_count);
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Follow command handlers
+// ---------------------------------------------------------------------------
+
+async fn cmd_follow(pool: &db::DbPool, args: FollowArgs) -> anyhow::Result<()> {
+    match args.command {
+        FollowCommands::Add(a) => cmd_follow_add(pool, a).await?,
+        FollowCommands::Remove(a) => cmd_follow_remove(pool, a).await?,
+        FollowCommands::List => cmd_follow_list(pool).await?,
+        FollowCommands::Sync => cmd_follow_sync(pool).await?,
+    }
+    Ok(())
+}
+
+async fn cmd_follow_add(pool: &db::DbPool, args: FollowAddArgs) -> anyhow::Result<()> {
+    let client = reqwest::Client::new();
+    match follow::follow_add(pool, &client, &args.author, enrich::OPENLIBRARY_BASE).await {
+        Ok(follow::FollowAddResult::Added { works_queued }) => {
+            println!("Now following '{}'. Queued {works_queued} works.", args.author);
+        }
+        Ok(follow::FollowAddResult::AlreadyFollowed) => {
+            println!("Already following '{}'.", args.author);
+        }
+        Ok(follow::FollowAddResult::AuthorNotFound) => {
+            println!("Author '{}' not found on OpenLibrary.", args.author);
+        }
+        Err(e) => {
+            eprintln!("Error: {e:?}");
+            std::process::exit(1);
+        }
+    }
+    Ok(())
+}
+
+async fn cmd_follow_remove(pool: &db::DbPool, args: FollowRemoveArgs) -> anyhow::Result<()> {
+    let found = follow::follow_remove(pool, &args.author).await?;
+    if found {
+        println!("Unfollowed '{}'.", args.author);
+    } else {
+        eprintln!("Error: '{}' is not in the follow list.", args.author);
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+async fn cmd_follow_list(pool: &db::DbPool) -> anyhow::Result<()> {
+    let authors = follow::follow_list(pool).await?;
+    if authors.is_empty() {
+        println!("No authors followed.");
+        return Ok(());
+    }
+    for row in &authors {
+        println!(
+            "{} (last synced: {})",
+            row.name,
+            row.last_synced.as_deref().unwrap_or("never")
+        );
+    }
+    Ok(())
+}
+
+async fn cmd_follow_sync(pool: &db::DbPool) -> anyhow::Result<()> {
+    let client = reqwest::Client::new();
+    match follow::follow_sync(pool, &client, enrich::OPENLIBRARY_BASE).await {
+        Ok(0) => {} // message already printed inside follow_sync
+        Ok(n) => println!("Synced {n} author(s)."),
+        Err(e) => {
+            eprintln!("Error: {e:?}");
+            std::process::exit(1);
+        }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Series command handlers
+// ---------------------------------------------------------------------------
+
+async fn cmd_series(pool: &db::DbPool, args: SeriesArgs) -> anyhow::Result<()> {
+    match args.command {
+        None => cmd_series_show(pool).await?,
+        Some(SeriesCommands::Fill) => cmd_series_fill(pool).await?,
+        Some(SeriesCommands::List(a)) => cmd_series_list(pool, a).await?,
+    }
+    Ok(())
+}
+
+async fn cmd_series_show(pool: &db::DbPool) -> anyhow::Result<()> {
+    let editions = db::editions_with_series(pool).await?;
+    let views = series::compute_series_views(&editions);
+    print!("{}", series::format_series_text(&views));
+    Ok(())
+}
+
+async fn cmd_series_fill(pool: &db::DbPool) -> anyhow::Result<()> {
+    let client = reqwest::Client::new();
+    match series::series_fill(pool, &client, enrich::OPENLIBRARY_BASE).await {
+        Ok(0) => {} // message already printed inside series_fill
+        Ok(n) => println!("Queued {n} missing works."),
+        Err(e) => {
+            eprintln!("Error: {e:?}");
+            std::process::exit(1);
+        }
+    }
+    Ok(())
+}
+
+async fn cmd_series_list(pool: &db::DbPool, args: SeriesListArgs) -> anyhow::Result<()> {
+    const VALID_OUTPUTS: &[&str] = &["text", "json", "csv"];
+    if !VALID_OUTPUTS.contains(&args.output.as_str()) {
+        eprintln!(
+            "Error: invalid --output '{}'. Valid values: text, json, csv",
+            args.output
+        );
+        std::process::exit(1);
+    }
+
+    let editions = db::editions_with_series(pool).await?;
+    let views = series::compute_series_views(&editions);
+
+    match args.output.as_str() {
+        "json" => println!("{}", series::format_series_json(&views)?),
+        "csv" => print!("{}", series::format_series_csv(&views)?),
+        _ => print!("{}", series::format_series_text(&views)),
+    }
     Ok(())
 }
 

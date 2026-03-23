@@ -56,7 +56,7 @@ struct OlWork {
 
 /// Return `true` if the book is already owned (editions table, owned = 1).
 /// Mirrors AC-41 matching order.
-async fn is_already_owned(
+pub(crate) async fn is_already_owned(
     pool: &db::DbPool,
     title: &str,
     author: Option<&str>,
@@ -129,7 +129,7 @@ async fn is_already_owned(
 
 /// Return the first existing `want_list` row that matches by ISBN or fuzzy.
 /// Resolves Q3: title-only entries dedup by exact case-insensitive title.
-async fn find_existing_want(
+pub(crate) async fn find_existing_want(
     pool: &db::DbPool,
     title: &str,
     author: Option<&str>,
