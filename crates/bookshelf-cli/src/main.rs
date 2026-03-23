@@ -730,6 +730,8 @@ async fn cmd_stats(pool: &db::DbPool) -> anyhow::Result<()> {
     println!("    Manual:          {:>6}", s.want_by_manual);
     println!("    OpenLibrary:     {:>6}", s.want_by_openlibrary);
     println!("    Text file:       {:>6}", s.want_by_text_file);
+    println!("    Author follow:   {:>6}", s.want_by_author_follow);
+    println!("    Series fill:     {:>6}", s.want_by_series_fill);
     println!();
     println!("Grab List (not owned):{:>5}", s.grab_count);
     Ok(())

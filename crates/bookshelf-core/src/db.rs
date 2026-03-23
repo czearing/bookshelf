@@ -29,7 +29,9 @@ pub struct LibraryStats {
     pub want_by_manual: i64,
     pub want_by_openlibrary: i64,
     pub want_by_text_file: i64,
-    // Grab list (not owned)
+    pub want_by_author_follow: i64,
+    pub want_by_series_fill: i64,
+    // Grab list (approximate: ISBN exact match only — fuzzy/work-level not counted here)
     pub grab_count: i64,
 }
 
@@ -572,6 +574,10 @@ pub async fn library_stats(pool: &DbPool) -> anyhow::Result<LibraryStats> {
     let want_by_openlibrary =
         count!("SELECT COUNT(*) FROM want_list WHERE source = 'openlibrary'");
     let want_by_text_file = count!("SELECT COUNT(*) FROM want_list WHERE source = 'text_file'");
+    let want_by_author_follow =
+        count!("SELECT COUNT(*) FROM want_list WHERE source = 'author_follow'");
+    let want_by_series_fill =
+        count!("SELECT COUNT(*) FROM want_list WHERE source = 'series_fill'");
 
     // Grab count: want entries where isbn13 is NOT matched by any owned edition.
     let grab_count = sqlx::query(
@@ -599,6 +605,8 @@ pub async fn library_stats(pool: &DbPool) -> anyhow::Result<LibraryStats> {
         want_by_manual,
         want_by_openlibrary,
         want_by_text_file,
+        want_by_author_follow,
+        want_by_series_fill,
         grab_count,
     })
 }
@@ -1137,6 +1145,12 @@ mod tests {
         insert_want(&pool, "Want D", None, None, "text_file", None, 5, None)
             .await
             .unwrap();
+        insert_want(&pool, "Want E", None, None, "author_follow", None, 5, None)
+            .await
+            .unwrap();
+        insert_want(&pool, "Want F", None, None, "series_fill", None, 7, None)
+            .await
+            .unwrap();
 
         let stats = library_stats(&pool).await.unwrap();
 
@@ -1144,14 +1158,16 @@ mod tests {
         assert_eq!(stats.with_isbn, 2, "2 books with ISBN");
         assert_eq!(stats.in_a_series, 1, "1 book in a series");
         assert_eq!(stats.enriched, 1, "1 enriched book");
-        assert_eq!(stats.want_total, 4, "4 want list entries");
+        assert_eq!(stats.want_total, 6, "6 want list entries");
         assert_eq!(stats.want_with_isbn, 1, "1 want entry with ISBN");
         assert_eq!(stats.want_by_goodreads_csv, 1);
         assert_eq!(stats.want_by_manual, 1);
         assert_eq!(stats.want_by_openlibrary, 1);
         assert_eq!(stats.want_by_text_file, 1);
-        // Grab count: 4 want entries, none owned by ISBN match.
-        assert_eq!(stats.grab_count, 4);
+        assert_eq!(stats.want_by_author_follow, 1);
+        assert_eq!(stats.want_by_series_fill, 1);
+        // Grab count: 6 want entries, none owned by ISBN match.
+        assert_eq!(stats.grab_count, 6);
     }
 
     #[tokio::test]
