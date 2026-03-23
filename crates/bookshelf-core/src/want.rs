@@ -487,10 +487,20 @@ fn parse_text_line(line: &str) -> (String, Option<String>) {
 }
 
 /// Find the byte position of `needle` in `haystack` (case-insensitive).
+/// The returned offset is a valid byte index into `haystack` itself.
 fn find_delimiter_ci(haystack: &str, needle: &str) -> Option<usize> {
-    let lower_haystack = haystack.to_lowercase();
     let lower_needle = needle.to_lowercase();
-    lower_haystack.find(&lower_needle)
+    // Walk each char boundary of the original string.  At each position,
+    // check whether the suffix starting there, when lowercased, begins with
+    // the lowercased needle.  This guarantees the returned offset is a valid
+    // byte index into `haystack` even when lowercasing changes byte lengths.
+    for (byte_pos, _) in haystack.char_indices() {
+        let suffix_lower = haystack[byte_pos..].to_lowercase();
+        if suffix_lower.starts_with(&lower_needle) {
+            return Some(byte_pos);
+        }
+    }
+    None
 }
 
 // ---------------------------------------------------------------------------
@@ -622,5 +632,17 @@ mod tests {
         let (title, author) = parse_text_line("Just a Title");
         assert_eq!(title, "Just a Title");
         assert!(author.is_none());
+    }
+
+    /// `İ` (U+0130, 2 UTF-8 bytes) lowercases to `i` + combining dot above
+    /// (3 UTF-8 bytes).  The byte offset returned by `find_delimiter_ci` must
+    /// be valid for the *original* string, not the lowercased copy; otherwise
+    /// the slice `line[..pos]` would land on a non-char boundary and panic.
+    #[test]
+    fn test_parse_text_line_non_ascii_multibyte_title() {
+        // U+0130 LATIN CAPITAL LETTER I WITH DOT ABOVE — expands when lowercased.
+        let (title, author) = parse_text_line("\u{130}stanbul by Orhan Pamuk");
+        assert_eq!(title, "\u{130}stanbul");
+        assert_eq!(author.as_deref(), Some("Orhan Pamuk"));
     }
 }

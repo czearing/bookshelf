@@ -311,6 +311,8 @@ pub struct WantRow {
     pub notes: Option<String>,
 }
 
+const VALID_SOURCES: &[&str] = &["goodreads_csv", "openlibrary", "manual", "text_file"];
+
 /// Insert one row into `want_list`. Returns the `last_insert_rowid`.
 #[allow(clippy::too_many_arguments)]
 pub async fn insert_want(
@@ -323,6 +325,19 @@ pub async fn insert_want(
     priority: i64,
     notes: Option<&str>,
 ) -> anyhow::Result<i64> {
+    if !VALID_SOURCES.contains(&source) {
+        anyhow::bail!(
+            "insert_want: invalid source {:?}; must be one of {:?}",
+            source,
+            VALID_SOURCES
+        );
+    }
+    if !(1..=10).contains(&priority) {
+        anyhow::bail!(
+            "insert_want: priority {} is out of range; must be 1–10 inclusive",
+            priority
+        );
+    }
     let added_at = Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
     let result = sqlx::query(
         r"INSERT INTO want_list (title, author, isbn13, source, source_id, added_at, priority, notes)
