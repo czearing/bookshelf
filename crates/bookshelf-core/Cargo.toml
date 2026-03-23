@@ -18,6 +18,7 @@ dirs       = "5"
 tracing    = "0.1"
 walkdir      = "2"
 urlencoding  = "2"
+csv          = "1"
 
 [dev-dependencies]
 tokio    = { version = "1", features = ["full"] }

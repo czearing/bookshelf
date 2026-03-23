@@ -293,6 +293,175 @@ pub async fn update_work_ol_id(
     Ok(())
 }
 
+// ---------------------------------------------------------------------------
+// want_list table: struct, helpers, and CRUD functions
+// ---------------------------------------------------------------------------
+
+/// A row from the `want_list` table.
+#[derive(Debug, Clone)]
+pub struct WantRow {
+    pub id: i64,
+    pub title: String,
+    pub author: Option<String>,
+    pub isbn13: Option<String>,
+    pub source: String,
+    pub source_id: Option<String>,
+    pub added_at: String,
+    pub priority: i64,
+    pub notes: Option<String>,
+}
+
+/// Insert one row into `want_list`. Returns the `last_insert_rowid`.
+#[allow(clippy::too_many_arguments)]
+pub async fn insert_want(
+    pool: &DbPool,
+    title: &str,
+    author: Option<&str>,
+    isbn13: Option<&str>,
+    source: &str,
+    source_id: Option<&str>,
+    priority: i64,
+    notes: Option<&str>,
+) -> anyhow::Result<i64> {
+    let added_at = Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let result = sqlx::query(
+        r"INSERT INTO want_list (title, author, isbn13, source, source_id, added_at, priority, notes)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    )
+    .bind(title)
+    .bind(author)
+    .bind(isbn13)
+    .bind(source)
+    .bind(source_id)
+    .bind(&added_at)
+    .bind(priority)
+    .bind(notes)
+    .execute(pool)
+    .await
+    .context("insert_want")?;
+
+    Ok(result.last_insert_rowid())
+}
+
+/// Update `title`, `author`, `isbn13`, and `source_id` of an existing `want_list` row.
+/// Does NOT modify `added_at`, `priority`, or `notes`.
+pub async fn update_want(
+    pool: &DbPool,
+    id: i64,
+    title: &str,
+    author: Option<&str>,
+    isbn13: Option<&str>,
+    source_id: Option<&str>,
+) -> anyhow::Result<()> {
+    sqlx::query(
+        "UPDATE want_list SET title = ?, author = ?, isbn13 = ?, source_id = ? WHERE id = ?",
+    )
+    .bind(title)
+    .bind(author)
+    .bind(isbn13)
+    .bind(source_id)
+    .bind(id)
+    .execute(pool)
+    .await
+    .context("update_want")?;
+    Ok(())
+}
+
+/// Update only `isbn13` on a `want_list` row (used by `want enrich`).
+pub async fn update_want_isbn13(pool: &DbPool, id: i64, isbn13: &str) -> anyhow::Result<()> {
+    sqlx::query("UPDATE want_list SET isbn13 = ? WHERE id = ?")
+        .bind(isbn13)
+        .bind(id)
+        .execute(pool)
+        .await
+        .context("update_want_isbn13")?;
+    Ok(())
+}
+
+/// Return all `want_list` rows, optionally filtered by `source`, ordered by `id`.
+pub async fn list_want(
+    pool: &DbPool,
+    source_filter: Option<&str>,
+) -> anyhow::Result<Vec<WantRow>> {
+    let rows = if let Some(src) = source_filter {
+        sqlx::query("SELECT * FROM want_list WHERE source = ? ORDER BY id")
+            .bind(src)
+            .fetch_all(pool)
+            .await
+            .context("list_want (filtered)")?
+    } else {
+        sqlx::query("SELECT * FROM want_list ORDER BY id")
+            .fetch_all(pool)
+            .await
+            .context("list_want")?
+    };
+
+    rows.into_iter().map(row_to_want).collect()
+}
+
+/// Return one `want_list` row by `id`, or `None` if not found.
+pub async fn get_want(pool: &DbPool, id: i64) -> anyhow::Result<Option<WantRow>> {
+    let row = sqlx::query("SELECT * FROM want_list WHERE id = ?")
+        .bind(id)
+        .fetch_optional(pool)
+        .await
+        .context("get_want")?;
+
+    row.map(row_to_want).transpose()
+}
+
+/// Return all `want_list` rows eligible for enrichment:
+/// `isbn13 IS NULL AND title IS NOT NULL AND author IS NOT NULL`.
+pub async fn want_entries_needing_enrichment(pool: &DbPool) -> anyhow::Result<Vec<WantRow>> {
+    let rows = sqlx::query(
+        "SELECT * FROM want_list WHERE isbn13 IS NULL AND title IS NOT NULL AND author IS NOT NULL",
+    )
+    .fetch_all(pool)
+    .await
+    .context("want_entries_needing_enrichment")?;
+
+    rows.into_iter().map(row_to_want).collect()
+}
+
+/// Return the first `want_list` row with `isbn13 = ?`, or `None`.
+pub async fn find_want_by_isbn13(
+    pool: &DbPool,
+    isbn13: &str,
+) -> anyhow::Result<Option<WantRow>> {
+    let row = sqlx::query("SELECT * FROM want_list WHERE isbn13 = ? LIMIT 1")
+        .bind(isbn13)
+        .fetch_optional(pool)
+        .await
+        .context("find_want_by_isbn13")?;
+
+    row.map(row_to_want).transpose()
+}
+
+/// Return all rows from `want_list` (no filter); used by the grab command.
+pub async fn all_want_entries(pool: &DbPool) -> anyhow::Result<Vec<WantRow>> {
+    let rows = sqlx::query("SELECT * FROM want_list")
+        .fetch_all(pool)
+        .await
+        .context("all_want_entries")?;
+
+    rows.into_iter().map(row_to_want).collect()
+}
+
+/// Convert a raw `sqlx::sqlite::SqliteRow` into a `WantRow`.
+fn row_to_want(row: sqlx::sqlite::SqliteRow) -> anyhow::Result<WantRow> {
+    Ok(WantRow {
+        id: row.try_get("id")?,
+        title: row.try_get("title")?,
+        author: row.try_get("author")?,
+        isbn13: row.try_get("isbn13")?,
+        source: row.try_get("source")?,
+        source_id: row.try_get("source_id")?,
+        added_at: row.try_get("added_at")?,
+        priority: row.try_get("priority")?,
+        notes: row.try_get("notes")?,
+    })
+}
+
 /// Convert a raw `sqlx::sqlite::SqliteRow` into an `EditionRow`.
 fn row_to_edition(row: sqlx::sqlite::SqliteRow) -> anyhow::Result<EditionRow> {
     Ok(EditionRow {

@@ -1,5 +1,5 @@
 use anyhow::Context;
-use bookshelf_core::{db, enrich, fuzzy, scan};
+use bookshelf_core::{db, enrich, fuzzy, grab, scan, want};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -26,6 +26,10 @@ enum Commands {
     Info(InfoArgs),
     /// Fetch metadata from OpenLibrary and Google Books for un-enriched books
     Enrich,
+    /// Manage the want list (import, add, list, enrich)
+    Want(WantArgs),
+    /// Compare want list against owned editions and output the grab list
+    Grab(GrabArgs),
 }
 
 #[derive(Parser)]
@@ -44,6 +48,90 @@ struct SearchArgs {
 struct InfoArgs {
     /// Edition ID
     id: i64,
+}
+
+// ---------------------------------------------------------------------------
+// Want subcommand clap structs
+// ---------------------------------------------------------------------------
+
+#[derive(Parser)]
+struct WantArgs {
+    #[command(subcommand)]
+    command: WantCommands,
+}
+
+#[derive(Subcommand)]
+enum WantCommands {
+    /// Import books from a source into the want list
+    Import(WantImportArgs),
+    /// Manually add a book to the want list
+    Add(WantAddArgs),
+    /// List all want list entries
+    List(WantListArgs),
+    /// Enrich want list entries by resolving missing ISBN-13 values
+    Enrich,
+}
+
+#[derive(Parser)]
+struct WantImportArgs {
+    #[command(subcommand)]
+    command: WantImportCommands,
+}
+
+#[derive(Subcommand)]
+enum WantImportCommands {
+    /// Import from a Goodreads CSV export
+    Goodreads(GoodreadsArgs),
+    /// Import from an OpenLibrary want-to-read list
+    Openlibrary(OpenlibraryArgs),
+    /// Import from a plain text file
+    Text(TextArgs),
+}
+
+#[derive(Parser)]
+struct GoodreadsArgs {
+    /// Path to the Goodreads CSV export file
+    path: PathBuf,
+}
+
+#[derive(Parser)]
+struct OpenlibraryArgs {
+    /// OpenLibrary username
+    username: String,
+}
+
+#[derive(Parser)]
+struct TextArgs {
+    /// Path to the plain text file
+    path: PathBuf,
+}
+
+#[derive(Parser)]
+struct WantAddArgs {
+    /// Title of the book
+    title: String,
+    #[arg(long)]
+    author: Option<String>,
+    #[arg(long)]
+    isbn: Option<String>,
+    #[arg(long, default_value = "5")]
+    priority: i64,
+    #[arg(long)]
+    notes: Option<String>,
+}
+
+#[derive(Parser)]
+struct WantListArgs {
+    /// Filter by source (goodreads_csv, openlibrary, manual, text_file)
+    #[arg(long)]
+    source: Option<String>,
+}
+
+#[derive(Parser)]
+struct GrabArgs {
+    /// Output format: text (default), json, or csv
+    #[arg(long, default_value = "text")]
+    output: String,
 }
 
 fn main() {
@@ -71,6 +159,8 @@ async fn async_run(cli: Cli) -> anyhow::Result<()> {
         Commands::Search(args) => cmd_search(&pool, &args.query).await?,
         Commands::Info(args) => cmd_info(&pool, args.id).await?,
         Commands::Enrich => cmd_enrich(&pool).await?,
+        Commands::Want(args) => cmd_want(&pool, args).await?,
+        Commands::Grab(args) => cmd_grab(&pool, args).await?,
     }
 
     Ok(())
@@ -327,6 +417,188 @@ async fn cmd_enrich(pool: &db::DbPool) -> anyhow::Result<()> {
                 row.id,
                 row.title.as_deref().unwrap_or("unknown")
             );
+        }
+    }
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Want command handlers
+// ---------------------------------------------------------------------------
+
+async fn cmd_want(pool: &db::DbPool, args: WantArgs) -> anyhow::Result<()> {
+    match args.command {
+        WantCommands::Import(import_args) => cmd_want_import(pool, import_args).await?,
+        WantCommands::Add(add_args) => cmd_want_add(pool, add_args).await?,
+        WantCommands::List(list_args) => cmd_want_list(pool, list_args).await?,
+        WantCommands::Enrich => cmd_want_enrich(pool).await?,
+    }
+    Ok(())
+}
+
+async fn cmd_want_import(pool: &db::DbPool, args: WantImportArgs) -> anyhow::Result<()> {
+    match args.command {
+        WantImportCommands::Goodreads(a) => cmd_want_import_goodreads(pool, a.path).await?,
+        WantImportCommands::Openlibrary(a) => {
+            cmd_want_import_openlibrary(pool, a.username).await?
+        }
+        WantImportCommands::Text(a) => cmd_want_import_text(pool, a.path).await?,
+    }
+    Ok(())
+}
+
+async fn cmd_want_import_goodreads(
+    pool: &db::DbPool,
+    path: PathBuf,
+) -> anyhow::Result<()> {
+    if let Err(e) = want::import_goodreads_csv(pool, &path).await {
+        eprintln!("Error: {e}");
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+async fn cmd_want_import_openlibrary(
+    pool: &db::DbPool,
+    username: String,
+) -> anyhow::Result<()> {
+    let client = reqwest::Client::new();
+    if let Err(e) =
+        want::import_openlibrary(pool, &client, &username, enrich::OPENLIBRARY_BASE).await
+    {
+        eprintln!("{e}");
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+async fn cmd_want_import_text(pool: &db::DbPool, path: PathBuf) -> anyhow::Result<()> {
+    if let Err(e) = want::import_text_file(pool, &path).await {
+        eprintln!("Error: {e}");
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+async fn cmd_want_add(pool: &db::DbPool, args: WantAddArgs) -> anyhow::Result<()> {
+    let result = want::add_manual(
+        pool,
+        &args.title,
+        args.author.as_deref(),
+        args.isbn.as_deref(),
+        args.priority,
+        args.notes.as_deref(),
+    )
+    .await;
+
+    match result {
+        Err(e) => {
+            eprintln!("Error: {e}");
+            std::process::exit(1);
+        }
+        Ok(want::AddResult::AlreadyOwned) => {
+            println!("Already owned: {}", args.title);
+        }
+        Ok(want::AddResult::AlreadyInWantList) => {
+            println!("Already in want list: {}", args.title);
+        }
+        Ok(want::AddResult::Inserted) => {
+            println!("Added to want list: {}", args.title);
+        }
+    }
+    Ok(())
+}
+
+async fn cmd_want_list(pool: &db::DbPool, args: WantListArgs) -> anyhow::Result<()> {
+    const VALID_SOURCES: &[&str] = &["goodreads_csv", "openlibrary", "manual", "text_file"];
+
+    if let Some(ref src) = args.source {
+        if !VALID_SOURCES.contains(&src.as_str()) {
+            eprintln!(
+                "Error: invalid source '{src}'. Valid values: {}",
+                VALID_SOURCES.join(", ")
+            );
+            std::process::exit(1);
+        }
+    }
+
+    let rows = db::list_want(pool, args.source.as_deref()).await?;
+    if rows.is_empty() {
+        println!("No entries in want list.");
+        return Ok(());
+    }
+
+    for row in &rows {
+        let author = row.author.as_deref().unwrap_or("(none)");
+        println!(
+            "{}  {}  [{}]  priority:{}  source:{}",
+            row.id, row.title, author, row.priority, row.source
+        );
+    }
+    Ok(())
+}
+
+async fn cmd_want_enrich(pool: &db::DbPool) -> anyhow::Result<()> {
+    let client = reqwest::Client::new();
+    let (enriched, eligible) =
+        want::enrich_want_list(pool, &client, enrich::OPENLIBRARY_BASE).await?;
+    println!("Enriched {enriched} of {eligible} want list entries.");
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Grab command handler
+// ---------------------------------------------------------------------------
+
+async fn cmd_grab(pool: &db::DbPool, args: GrabArgs) -> anyhow::Result<()> {
+    const VALID_OUTPUTS: &[&str] = &["text", "json", "csv"];
+    if !VALID_OUTPUTS.contains(&args.output.as_str()) {
+        eprintln!(
+            "Error: invalid --output '{}'. Valid values: text, json, csv",
+            args.output
+        );
+        std::process::exit(1);
+    }
+
+    // Check if the want list is completely empty.
+    let all_want = db::all_want_entries(pool).await?;
+    if all_want.is_empty() {
+        match args.output.as_str() {
+            "json" => println!("[]"),
+            "csv" => {
+                println!("priority,title,author,isbn13,source,notes");
+            }
+            _ => println!("Want list is empty."),
+        }
+        return Ok(());
+    }
+
+    let entries = grab::compute_grab_list(pool).await?;
+
+    if entries.is_empty() {
+        match args.output.as_str() {
+            "json" => println!("[]"),
+            "csv" => {
+                println!("priority,title,author,isbn13,source,notes");
+            }
+            _ => println!("All wanted books are already owned."),
+        }
+        return Ok(());
+    }
+
+    match args.output.as_str() {
+        "json" => {
+            let json = grab::format_json(&entries)?;
+            println!("{json}");
+        }
+        "csv" => {
+            let csv = grab::format_csv(&entries)?;
+            print!("{csv}");
+        }
+        _ => {
+            let text = grab::format_text(&entries);
+            print!("{text}");
         }
     }
 
