@@ -691,7 +691,8 @@ async fn test_want_enrich_skips_missing_author() {
     let (pool, _tmp) = temp_pool().await;
     let server = MockServer::start().await;
 
-    // Row with NULL author — not eligible (DB query excludes it).
+    // Row with NULL author — returned by the query but skipped by the guard
+    // with a stderr warning; isbn13 must remain NULL.
     db::insert_want(&pool, "Title Only", None, None, "manual", None, 5, None)
         .await
         .unwrap();
@@ -699,8 +700,13 @@ async fn test_want_enrich_skips_missing_author() {
     let client = reqwest::Client::new();
     let (enriched, eligible) =
         want::enrich_want_list(&pool, &client, &server.uri()).await.unwrap();
-    assert_eq!(eligible, 0, "row without author must not be eligible");
+    assert_eq!(eligible, 1, "row without author is returned but skipped");
     assert_eq!(enriched, 0);
+
+    // isbn13 must still be NULL.
+    let rows = db::list_want(&pool, None).await.unwrap();
+    assert_eq!(rows.len(), 1);
+    assert!(rows[0].isbn13.is_none(), "isbn13 must remain NULL for skipped row");
 }
 
 #[tokio::test]

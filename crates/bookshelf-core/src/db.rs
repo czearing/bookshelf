@@ -425,12 +425,11 @@ pub async fn get_want(pool: &DbPool, id: i64) -> anyhow::Result<Option<WantRow>>
     row.map(row_to_want).transpose()
 }
 
-/// Return all `want_list` rows eligible for enrichment:
-/// `isbn13 IS NULL AND title IS NOT NULL AND author IS NOT NULL`.
+/// Return all `want_list` rows eligible for enrichment: `isbn13 IS NULL`.
+/// Rows with NULL title or author are included so the caller can emit a
+/// per-row warning and skip them; they must not be silently excluded here.
 pub async fn want_entries_needing_enrichment(pool: &DbPool) -> anyhow::Result<Vec<WantRow>> {
-    let rows = sqlx::query(
-        "SELECT * FROM want_list WHERE isbn13 IS NULL AND title IS NOT NULL AND author IS NOT NULL",
-    )
+    let rows = sqlx::query("SELECT * FROM want_list WHERE isbn13 IS NULL")
     .fetch_all(pool)
     .await
     .context("want_entries_needing_enrichment")?;
