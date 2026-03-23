@@ -197,6 +197,45 @@ mod tests {
         assert_eq!(result.inserted, 0);
     }
 
+    // Category 10: symlink loop detection
+    // Symlink creation may require elevated privileges on Windows.
+    // We gate the test on Unix only, but also check gracefully on Windows
+    // by attempting to create the symlink and skipping on PermissionDenied.
+    #[tokio::test]
+    async fn test_scan_handles_symlink_gracefully() {
+        let (pool, _tmp) = open_temp_db().await;
+        let tmp_dir = TempDir::new().unwrap();
+
+        // Create a symlink pointing to the parent directory (potential infinite loop).
+        let link_path = tmp_dir.path().join("loop_link");
+
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(tmp_dir.path(), &link_path).unwrap();
+            // scan_directory must return Ok (not hang or panic) because follow_links(false).
+            let result = scan_directory(&pool, tmp_dir.path()).await;
+            assert!(result.is_ok(), "scan_directory must succeed despite symlink loop");
+        }
+
+        #[cfg(windows)]
+        {
+            // On Windows, symlink creation requires elevated privileges (SeCreateSymbolicLinkPrivilege).
+            // Try to create it; if it fails for any privilege/OS reason, skip gracefully.
+            match std::os::windows::fs::symlink_dir(tmp_dir.path(), &link_path) {
+                Ok(()) => {
+                    let result = scan_directory(&pool, tmp_dir.path()).await;
+                    assert!(result.is_ok(), "scan_directory must succeed despite symlink loop");
+                }
+                Err(_) => {
+                    // Not running as administrator or Developer Mode not enabled — skip.
+                    // Still verify that a normal scan of an empty dir succeeds.
+                    let result = scan_directory(&pool, tmp_dir.path()).await;
+                    assert!(result.is_ok());
+                }
+            }
+        }
+    }
+
     #[tokio::test]
     async fn test_scan_inserts_epub_and_deduplicates() {
         let (pool, _tmp) = open_temp_db().await;

@@ -93,9 +93,36 @@ async fn test_added_at_format() {
 const GOODREADS_HEADER: &str =
     "Book Id,Title,Author,Author l-f,Additional Authors,ISBN,ISBN13,My Rating,Average Rating,Publisher,Binding,Number of Pages,Year Published,Original Publication Year,Date Read,Date Added,Bookshelves,Bookshelves with positions,Exclusive Shelf,My Review,Spoiler,Private Notes,Read Count,Owned Copies\n";
 
+/// Build a standard Goodreads CSV row with 24 fields matching GOODREADS_HEADER.
+/// Shelf defaults to "to-read" so the shelf filter passes.
+/// Column layout (24 columns, 23 commas):
+///   Book Id(0),Title(1),Author(2),Author l-f(3),Additional Authors(4),
+///   ISBN(5),ISBN13(6),My Rating(7),Average Rating(8),Publisher(9),
+///   Binding(10),Number of Pages(11),Year Published(12),
+///   Original Publication Year(13),Date Read(14),Date Added(15),
+///   Bookshelves(16),Bookshelves with positions(17),Exclusive Shelf(18),
+///   My Review(19),Spoiler(20),Private Notes(21),Read Count(22),Owned Copies(23)
 fn goodreads_row(book_id: &str, title: &str, author: &str, isbn13: &str) -> String {
+    // author at col2, isbn13 at col6 (3 empty cols between), shelf at col18 (11 empty after isbn13)
+    // trailing 5 empty cols after shelf.
     format!(
-        "{book_id},{title},{author},,,,{isbn13},,,,,,,,,,,,,,,,,\n"
+        "{book_id},{title},{author},,,,{isbn13},,,,,,,,,,,,to-read,,,,,\n"
+    )
+}
+
+/// Build a Goodreads row with an explicit ISBN-10 at col5 and a custom shelf.
+fn goodreads_row_with_isbn10_and_shelf(
+    book_id: &str,
+    title: &str,
+    author: &str,
+    isbn10: &str,
+    isbn13: &str,
+    shelf: &str,
+) -> String {
+    // isbn10 at col5: author(2), ""(3), ""(4), isbn10(5), isbn13(6)
+    // Then 12 empty cols (7-17), shelf(18), 5 empty cols (19-23) = 23 commas total.
+    format!(
+        "{book_id},{title},{author},,,{isbn10},{isbn13},,,,,,,,,,,,{shelf},,,,,\n"
     )
 }
 
@@ -107,7 +134,7 @@ async fn test_goodreads_csv_imports_correctly() {
         goodreads_row("123", "Dune", "Frank Herbert", "9780441013593")
     );
     let (path, _file) = write_temp_csv(&csv);
-    let summary = want::import_goodreads_csv(&pool, &path).await.unwrap();
+    let summary = want::import_goodreads_csv(&pool, &path, false).await.unwrap();
     assert_eq!(summary.imported, 1);
     assert_eq!(summary.skipped_owned, 0);
 
@@ -129,7 +156,7 @@ async fn test_goodreads_csv_unwraps_isbn_format() {
         goodreads_row("1", "The Hobbit", "J.R.R. Tolkien", "=\"9780261102217\"")
     );
     let (path, _file) = write_temp_csv(&csv);
-    want::import_goodreads_csv(&pool, &path).await.unwrap();
+    want::import_goodreads_csv(&pool, &path, false).await.unwrap();
 
     let rows = db::list_want(&pool, None).await.unwrap();
     assert_eq!(rows[0].isbn13.as_deref(), Some("9780261102217"));
@@ -143,7 +170,7 @@ async fn test_goodreads_csv_null_isbn_stored_as_null() {
         goodreads_row("2", "No ISBN Book", "Some Author", "")
     );
     let (path, _file) = write_temp_csv(&csv);
-    want::import_goodreads_csv(&pool, &path).await.unwrap();
+    want::import_goodreads_csv(&pool, &path, false).await.unwrap();
 
     let rows = db::list_want(&pool, None).await.unwrap();
     assert!(rows[0].isbn13.is_none(), "empty ISBN13 must be stored as NULL");
@@ -155,6 +182,7 @@ async fn test_goodreads_csv_file_not_found() {
     let result = want::import_goodreads_csv(
         &pool,
         std::path::Path::new("/nonexistent/path/missing.csv"),
+        false,
     )
     .await;
     assert!(result.is_err(), "must return Err for missing file");
@@ -166,7 +194,7 @@ async fn test_goodreads_csv_missing_required_column() {
     // CSV without "Book Id" column
     let csv = "Title,Author,ISBN13\nDune,Frank Herbert,9780441013593\n";
     let (path, _file) = write_temp_csv(csv);
-    let result = want::import_goodreads_csv(&pool, &path).await;
+    let result = want::import_goodreads_csv(&pool, &path, false).await;
     assert!(result.is_err());
     let msg = result.unwrap_err().to_string();
     assert!(
@@ -194,7 +222,7 @@ async fn test_goodreads_csv_skips_already_owned() {
         goodreads_row("1", "Dune", "Frank Herbert", "9780441013593")
     );
     let (path, _file) = write_temp_csv(&csv);
-    let summary = want::import_goodreads_csv(&pool, &path).await.unwrap();
+    let summary = want::import_goodreads_csv(&pool, &path, false).await.unwrap();
     assert_eq!(summary.skipped_owned, 1);
     assert_eq!(summary.imported, 0);
 
@@ -225,7 +253,7 @@ async fn test_goodreads_csv_deduplicates_within_want_list() {
         goodreads_row("42", "Dune", "Frank Herbert", "9780441013593")
     );
     let (path, _file) = write_temp_csv(&csv);
-    let summary = want::import_goodreads_csv(&pool, &path).await.unwrap();
+    let summary = want::import_goodreads_csv(&pool, &path, false).await.unwrap();
     assert_eq!(summary.imported, 1);
 
     let rows = db::list_want(&pool, None).await.unwrap();
@@ -792,4 +820,287 @@ async fn test_want_enrich_summary_counts() {
         want::enrich_want_list(&pool, &client, &server.uri()).await.unwrap();
     assert_eq!(eligible, 3);
     assert_eq!(enriched, 2);
+}
+
+// ---------------------------------------------------------------------------
+// Issue 1 — Hyphenated ISBN normalization (E2E)
+// ---------------------------------------------------------------------------
+
+/// An EPUB with isbn "978-0-441-01359-3" must match a want entry with
+/// isbn13 "9780441013593" — the book must NOT appear on the grab list.
+#[tokio::test]
+async fn test_e2e_hyphenated_isbn_recognized_as_owned() {
+    use bookshelf_core::grab;
+
+    let (pool, _tmp) = temp_pool().await;
+
+    // Insert owned edition with hyphenated ISBN (as Calibre might generate).
+    let meta = bookshelf_core::EpubMeta {
+        title: Some("Neuromancer".to_string()),
+        authors: Some("William Gibson".to_string()),
+        isbn: Some("978-0-441-01359-3".to_string()),
+        source_path: "/tmp/neuromancer_hyphen.epub".to_string(),
+        ..Default::default()
+    };
+    db::upsert_edition(&pool, &meta).await.unwrap();
+
+    // Want entry with normalized ISBN.
+    db::insert_want(
+        &pool,
+        "Neuromancer",
+        Some("William Gibson"),
+        Some("9780441013593"),
+        "manual",
+        None,
+        5,
+        None,
+    )
+    .await
+    .unwrap();
+
+    let grab_list = grab::compute_grab_list(&pool, None).await.unwrap();
+    assert!(
+        grab_list.is_empty(),
+        "hyphenated EPUB ISBN must match normalized want entry; grab list must be empty, got {:?}",
+        grab_list.iter().map(|e| &e.title).collect::<Vec<_>>()
+    );
+}
+
+/// Import a Goodreads CSV where the want entry has a normalized ISBN13,
+/// and the owned EPUB in DB has a hyphenated ISBN — they must match
+/// (owned book must not appear on grab list).
+#[tokio::test]
+async fn test_goodreads_csv_normalized_isbn_matches_hyphenated_epub() {
+    use bookshelf_core::grab;
+
+    let (pool, _tmp) = temp_pool().await;
+
+    // Owned edition with hyphenated ISBN (simulates Calibre-generated metadata).
+    let meta = bookshelf_core::EpubMeta {
+        title: Some("Dune".to_string()),
+        authors: Some("Frank Herbert".to_string()),
+        isbn: Some("978-0-441-01359-3".to_string()),
+        source_path: "/tmp/dune_hyphen.epub".to_string(),
+        ..Default::default()
+    };
+    db::upsert_edition(&pool, &meta).await.unwrap();
+
+    // Goodreads CSV with normalized ISBN13 (no hyphens).
+    let csv = format!(
+        "{GOODREADS_HEADER}{}",
+        goodreads_row("1", "Dune", "Frank Herbert", "9780441013593")
+    );
+    let (path, _file) = write_temp_csv(&csv);
+    let summary = want::import_goodreads_csv(&pool, &path, false).await.unwrap();
+
+    // The CSV import should recognize the ISBN match and skip_owned.
+    assert_eq!(
+        summary.skipped_owned, 1,
+        "hyphenated EPUB ISBN must be recognized as owned during CSV import"
+    );
+    assert_eq!(summary.imported, 0);
+
+    // Grab list must be empty.
+    let grab_list = grab::compute_grab_list(&pool, None).await.unwrap();
+    assert!(
+        grab_list.is_empty(),
+        "owned book with hyphenated ISBN must not appear on grab list"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Issue 2 — ISBN-10 fallback (E2E)
+// ---------------------------------------------------------------------------
+
+/// A CSV row with blank ISBN13 but a valid ISBN10 must be stored with the
+/// converted ISBN-13 in want_list.
+#[tokio::test]
+async fn test_goodreads_csv_isbn10_fallback_stores_isbn13() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Build a CSV row where ISBN13 is empty but ISBN (col 5) = "0441013597".
+    let csv = format!(
+        "{GOODREADS_HEADER}{}",
+        goodreads_row_with_isbn10_and_shelf("1", "Dune", "Frank Herbert", "0441013597", "", "to-read")
+    );
+    let (path, _file) = write_temp_csv(&csv);
+    let summary = want::import_goodreads_csv(&pool, &path, false).await.unwrap();
+    assert_eq!(summary.imported, 1, "ISBN10-only row must be imported");
+
+    let rows = db::list_want(&pool, None).await.unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(
+        rows[0].isbn13.as_deref(),
+        Some("9780441013593"),
+        "ISBN-10 0441013597 must be converted to ISBN-13 9780441013593; got {:?}",
+        rows[0].isbn13
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Issue 3 — Exclusive Shelf filter
+// ---------------------------------------------------------------------------
+
+/// Only "to-read" shelf rows must be imported; "read" and "currently-reading"
+/// rows must be skipped.
+#[tokio::test]
+async fn test_goodreads_csv_shelf_filter_only_to_read() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Three rows on different shelves.
+    let csv = format!(
+        "{GOODREADS_HEADER}{}{}{}",
+        goodreads_row_with_isbn10_and_shelf("1", "Book A", "Author A", "", "", "to-read"),
+        goodreads_row_with_isbn10_and_shelf("2", "Book B", "Author B", "", "", "read"),
+        goodreads_row_with_isbn10_and_shelf("3", "Book C", "Author C", "", "", "currently-reading"),
+    );
+    let (path, _file) = write_temp_csv(&csv);
+    let summary = want::import_goodreads_csv(&pool, &path, false).await.unwrap();
+
+    // Only "Book A" should be imported.
+    assert_eq!(summary.imported, 1, "only to-read shelf rows must be imported");
+    // "read" and "currently-reading" are counted as skipped_rows.
+    assert_eq!(summary.skipped_rows, 2, "non-to-read shelves must increment skipped_rows");
+
+    let rows = db::list_want(&pool, None).await.unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].title, "Book A");
+}
+
+/// With all_shelves=true, all shelf rows are imported.
+#[tokio::test]
+async fn test_goodreads_csv_all_shelves_imports_all() {
+    let (pool, _tmp) = temp_pool().await;
+
+    let csv = format!(
+        "{GOODREADS_HEADER}{}{}{}",
+        goodreads_row_with_isbn10_and_shelf("1", "Book A", "Author A", "", "", "to-read"),
+        goodreads_row_with_isbn10_and_shelf("2", "Book B", "Author B", "", "", "read"),
+        goodreads_row_with_isbn10_and_shelf("3", "Book C", "Author C", "", "", "currently-reading"),
+    );
+    let (path, _file) = write_temp_csv(&csv);
+    let summary = want::import_goodreads_csv(&pool, &path, true).await.unwrap();
+
+    assert_eq!(summary.imported, 3, "all_shelves=true must import all rows");
+    assert_eq!(summary.skipped_rows, 0);
+}
+
+// ---------------------------------------------------------------------------
+// Issue 4a — Titles with commas
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_goodreads_csv_title_with_comma() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // RFC 4180 quoted title containing a comma — use the row helper which produces correct field count.
+    let csv = format!(
+        "{GOODREADS_HEADER}{}",
+        goodreads_row("1", "\"Good Omens: The Nice and Accurate Prophecies of Agnes Nutter, Witch\"", "Terry Pratchett", "9780060853983")
+    );
+    let (path, _file) = write_temp_csv(&csv);
+    let summary = want::import_goodreads_csv(&pool, &path, false).await.unwrap();
+    assert_eq!(summary.imported, 1);
+
+    let rows = db::list_want(&pool, None).await.unwrap();
+    assert_eq!(
+        rows[0].title,
+        "Good Omens: The Nice and Accurate Prophecies of Agnes Nutter, Witch"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Issue 4b — Unicode author names
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_goodreads_csv_unicode_author() {
+    let (pool, _tmp) = temp_pool().await;
+
+    let csv = format!(
+        "{GOODREADS_HEADER}{}",
+        goodreads_row("1", "The Master and Margarita", "Михаил Булгаков", "9780141180144")
+    );
+    let (path, _file) = write_temp_csv(&csv);
+    let summary = want::import_goodreads_csv(&pool, &path, false).await.unwrap();
+    assert_eq!(summary.imported, 1);
+
+    let rows = db::list_want(&pool, None).await.unwrap();
+    assert_eq!(rows[0].author.as_deref(), Some("Михаил Булгаков"));
+}
+
+// ---------------------------------------------------------------------------
+// Issue 4c — Empty rows in CSV are skipped without error
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_goodreads_csv_empty_rows_skipped() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // A CSV with blank lines interspersed.
+    let csv = format!(
+        "{GOODREADS_HEADER}{}\n{}",
+        goodreads_row("1", "Dune", "Frank Herbert", "9780441013593"),
+        goodreads_row("2", "Foundation", "Isaac Asimov", "9780553382570"),
+    );
+    let (path, _file) = write_temp_csv(&csv);
+    let summary = want::import_goodreads_csv(&pool, &path, false).await.unwrap();
+    assert_eq!(summary.imported, 2, "blank lines must be skipped silently");
+    assert_eq!(summary.skipped_rows, 0);
+}
+
+// ---------------------------------------------------------------------------
+// Issue 4d — Windows CRLF line endings
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_goodreads_csv_crlf_line_endings() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Build CSV with explicit \r\n line endings — replace \n with \r\n.
+    let row = goodreads_row("1", "Dune", "Frank Herbert", "9780441013593");
+    let crlf_csv = format!("{GOODREADS_HEADER}{row}")
+        .replace('\n', "\r\n");
+    let csv_bytes = crlf_csv.into_bytes();
+
+    let tmp = tempfile::NamedTempFile::with_suffix(".csv").unwrap();
+    std::fs::write(tmp.path(), &csv_bytes).unwrap();
+
+    let summary = want::import_goodreads_csv(&pool, tmp.path(), false)
+        .await
+        .unwrap();
+    assert_eq!(summary.imported, 1, "CRLF CSV must parse correctly");
+
+    let rows = db::list_want(&pool, None).await.unwrap();
+    assert_eq!(rows[0].title, "Dune");
+}
+
+// ---------------------------------------------------------------------------
+// Issue 4e — Additional Authors field is ignored (primary author used)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_goodreads_csv_additional_authors_ignored() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Good Omens: Terry Pratchett is Author, Neil Gaiman is in Additional Authors (col 4).
+    // Use the full-row helper with isbn10="" (col5 empty), isbn13="" (col6 empty),
+    // but we need to put "Neil Gaiman" in col4. Build manually with correct 24 fields:
+    // col0=1, col1=Good Omens, col2=Terry Pratchett, col3=Pratchett col Terry,
+    // col4=Neil Gaiman, col5="" (ISBN), col6="" (ISBN13), cols 7-17 empty,
+    // col18=to-read, cols 19-23 empty = 23 commas total.
+    // col0=1, col1-4 as set, col5-17 empty (13 commas from col4 to col17), col18=to-read, col19-23 empty.
+    let csv = format!(
+        "{GOODREADS_HEADER}1,\"Good Omens\",\"Terry Pratchett\",\"Pratchett, Terry\",\"Neil Gaiman\",,,,,,,,,,,,,,to-read,,,,,\n"
+    );
+    let (path, _file) = write_temp_csv(&csv);
+    want::import_goodreads_csv(&pool, &path, false).await.unwrap();
+
+    let rows = db::list_want(&pool, None).await.unwrap();
+    // The author stored must be "Terry Pratchett" only — Additional Authors is ignored.
+    assert_eq!(
+        rows[0].author.as_deref(),
+        Some("Terry Pratchett"),
+        "only primary Author column must be stored; Additional Authors must be ignored"
+    );
 }

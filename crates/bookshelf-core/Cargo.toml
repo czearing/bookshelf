@@ -21,6 +21,8 @@ urlencoding  = "2"
 csv          = "1"
 
 [dev-dependencies]
-tokio    = { version = "1", features = ["full"] }
-tempfile = "3"
-wiremock = "0.5"
+tokio            = { version = "1", features = ["full"] }
+tempfile         = "3"
+wiremock         = "0.5"
+quickcheck       = "1"
+quickcheck_macros = "1"

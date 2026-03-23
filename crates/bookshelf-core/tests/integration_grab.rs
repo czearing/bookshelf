@@ -4,6 +4,7 @@ use bookshelf_core::{
     epub::EpubMeta,
     grab,
 };
+use sqlx::Row;
 use tempfile::NamedTempFile;
 
 async fn temp_pool() -> (db::DbPool, NamedTempFile) {
@@ -39,7 +40,7 @@ async fn test_grab_isbn_match_owned() {
     insert_owned_edition(&pool, "Dune", "Frank Herbert", Some("9780441013593"), "/tmp/dune.epub").await;
     insert_want(&pool, "Dune", Some("Frank Herbert"), Some("9780441013593"), 5).await;
 
-    let grab = grab::compute_grab_list(&pool).await.unwrap();
+    let grab = grab::compute_grab_list(&pool, None).await.unwrap();
     assert!(grab.is_empty(), "ISBN-matched owned book must not appear in grab list");
 }
 
@@ -50,7 +51,7 @@ async fn test_grab_fuzzy_match_owned() {
     insert_owned_edition(&pool, "The Hobbit", "J.R.R. Tolkien", None, "/tmp/hobbit.epub").await;
     insert_want(&pool, "The Hobbit", Some("J.R.R. Tolkien"), None, 5).await;
 
-    let grab = grab::compute_grab_list(&pool).await.unwrap();
+    let grab = grab::compute_grab_list(&pool, None).await.unwrap();
     assert!(grab.is_empty(), "Fuzzy-matched owned book must not appear in grab list");
 }
 
@@ -83,7 +84,7 @@ async fn test_grab_work_level_match_owned() {
     // Want row with the ISBN that links to the work.
     insert_want(&pool, "Dune", Some("Frank Herbert"), Some("9780441013593"), 5).await;
 
-    let grab = grab::compute_grab_list(&pool).await.unwrap();
+    let grab = grab::compute_grab_list(&pool, None).await.unwrap();
     assert!(
         grab.is_empty(),
         "Work-level-matched owned book must not appear in grab list"
@@ -95,7 +96,7 @@ async fn test_grab_no_match_appears_in_list() {
     let (pool, _tmp) = temp_pool().await;
     insert_want(&pool, "Neuromancer", Some("William Gibson"), None, 8).await;
 
-    let grab = grab::compute_grab_list(&pool).await.unwrap();
+    let grab = grab::compute_grab_list(&pool, None).await.unwrap();
     assert_eq!(grab.len(), 1);
     assert_eq!(grab[0].title.as_deref(), Some("Neuromancer"));
     assert_eq!(grab[0].priority, 8);
@@ -113,7 +114,7 @@ async fn test_grab_null_author_skips_fuzzy() {
 
     // The want entry has no ISBN and no author, so fuzzy is skipped.
     // Fuzzy would have matched but must be skipped. The entry appears in grab list.
-    let grab = grab::compute_grab_list(&pool).await.unwrap();
+    let grab = grab::compute_grab_list(&pool, None).await.unwrap();
     assert_eq!(
         grab.len(),
         1,
@@ -124,7 +125,7 @@ async fn test_grab_null_author_skips_fuzzy() {
 #[tokio::test]
 async fn test_grab_empty_want_list() {
     let (pool, _tmp) = temp_pool().await;
-    let grab = grab::compute_grab_list(&pool).await.unwrap();
+    let grab = grab::compute_grab_list(&pool, None).await.unwrap();
     assert!(grab.is_empty());
 }
 
@@ -133,7 +134,7 @@ async fn test_grab_all_owned() {
     let (pool, _tmp) = temp_pool().await;
     insert_owned_edition(&pool, "Dune", "Frank Herbert", Some("9780441013593"), "/tmp/dune3.epub").await;
     insert_want(&pool, "Dune", Some("Frank Herbert"), Some("9780441013593"), 5).await;
-    let grab = grab::compute_grab_list(&pool).await.unwrap();
+    let grab = grab::compute_grab_list(&pool, None).await.unwrap();
     assert!(grab.is_empty(), "all owned → grab list must be empty");
 }
 
@@ -144,7 +145,7 @@ async fn test_grab_sort_order() {
     insert_want(&pool, "Apple Book", Some("Author A"), None, 7).await;
     insert_want(&pool, "Mango Book", Some("Author M"), None, 7).await;
 
-    let grab = grab::compute_grab_list(&pool).await.unwrap();
+    let grab = grab::compute_grab_list(&pool, None).await.unwrap();
     assert_eq!(grab.len(), 3);
     // Priority 7 items come first, sorted by title asc within same priority.
     assert_eq!(grab[0].priority, 7);
@@ -246,5 +247,116 @@ async fn test_grab_csv_null_fields_are_empty() {
     assert!(
         data.contains(",,"),
         "NULL fields must produce empty (consecutive comma) in CSV: {data}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Issue 5 — Work-level match E2E after enrichment merge
+// ---------------------------------------------------------------------------
+
+/// Two editions share a work_id (set via set_edition_work_id).  Edition A is
+/// owned; Edition B is not owned but has a matching want entry via its ISBN.
+/// The want entry must NOT appear in the grab list because the work is already
+/// owned through Edition A.
+#[tokio::test]
+async fn test_grab_work_level_match_after_enrichment_merge() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Edition A: owned, ISBN 9780441013593, will be assigned to the shared work.
+    let meta_a = EpubMeta {
+        title: Some("Dune".to_string()),
+        authors: Some("Frank Herbert".to_string()),
+        isbn: Some("9780441013593".to_string()),
+        source_path: "/tmp/dune_a.epub".to_string(),
+        ..Default::default()
+    };
+    let ed_a = db::upsert_edition(&pool, &meta_a).await.unwrap();
+
+    // Edition B: not owned (owned defaults to 0 after upsert — we just don't mark it).
+    // In the test DB, editions from upsert_edition are owned=1 by default because
+    // scan sets owned. We need to insert a non-owned edition manually.
+    let meta_b = EpubMeta {
+        title: Some("Dune (unowned edition)".to_string()),
+        authors: Some("Frank Herbert".to_string()),
+        isbn: Some("9780441013570".to_string()),
+        source_path: "/tmp/dune_b_unowned.epub".to_string(),
+        ..Default::default()
+    };
+    // Insert non-owned edition directly using low-level insert (owned=0 by default in schema).
+    sqlx::query(
+        r"INSERT INTO editions (title, authors, isbn, source_path, owned)
+          VALUES (?, ?, ?, ?, 0)",
+    )
+    .bind(&meta_b.title)
+    .bind(&meta_b.authors)
+    .bind(&meta_b.isbn)
+    .bind(&meta_b.source_path)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let ed_b_row = sqlx::query("SELECT id FROM editions WHERE source_path = ?")
+        .bind(&meta_b.source_path)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let ed_b: i64 = ed_b_row.try_get("id").unwrap();
+
+    // Create a shared work and assign both editions to it.
+    let work_id = db::insert_work(&pool, "Dune", "Frank Herbert").await.unwrap();
+    db::set_edition_work_id(&pool, ed_a, work_id).await.unwrap();
+    db::set_edition_work_id(&pool, ed_b, work_id).await.unwrap();
+
+    // Want entry with Edition B's ISBN.
+    insert_want(&pool, "Dune", Some("Frank Herbert"), Some("9780441013570"), 5).await;
+
+    // Grab list: the want entry shares a work_id with owned Edition A → must be empty.
+    let grab = grab::compute_grab_list(&pool, None).await.unwrap();
+    assert!(
+        grab.is_empty(),
+        "want entry must not appear in grab list when work is already owned via a different edition; got {:?}",
+        grab.iter().map(|e| &e.title).collect::<Vec<_>>()
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Issue 6 — CSV output quotes special characters
+// ---------------------------------------------------------------------------
+
+/// A grab list entry with a comma in the title must produce RFC 4180-quoted
+/// output; a title with an internal double-quote must use "" escaping.
+#[tokio::test]
+async fn test_grab_csv_output_quotes_comma_title() {
+    let entry = grab::GrabEntry {
+        title: Some("The Comma, A Story".to_string()),
+        author: None,
+        isbn13: None,
+        priority: 5,
+        source: "manual".to_string(),
+        notes: None,
+    };
+    let csv = grab::format_csv(&[entry]).unwrap();
+    assert!(
+        csv.contains("\"The Comma, A Story\""),
+        "comma in title must be RFC 4180 quoted: {csv}"
+    );
+}
+
+/// A title containing a double-quote must be escaped as "" per RFC 4180.
+#[tokio::test]
+async fn test_grab_csv_output_escapes_internal_quotes() {
+    let entry = grab::GrabEntry {
+        title: Some("The \"Great\" Escape".to_string()),
+        author: None,
+        isbn13: None,
+        priority: 5,
+        source: "manual".to_string(),
+        notes: None,
+    };
+    let csv = grab::format_csv(&[entry]).unwrap();
+    // RFC 4180: field with quotes must be wrapped in quotes, internal quotes doubled.
+    assert!(
+        csv.contains("\"The \"\"Great\"\" Escape\""),
+        "double-quotes in title must be escaped as \"\"\"\": {csv}"
     );
 }

@@ -1,4 +1,5 @@
 use crate::epub::EpubMeta;
+use crate::fuzzy::normalize_isbn;
 use anyhow::Context;
 use chrono::Utc;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
@@ -8,6 +9,29 @@ use std::str::FromStr;
 
 /// Re-export the pool type used throughout the crate.
 pub type DbPool = sqlx::SqlitePool;
+
+// ---------------------------------------------------------------------------
+// Library statistics
+// ---------------------------------------------------------------------------
+
+/// Aggregated statistics returned by `library_stats`.
+#[derive(Debug, Default, PartialEq)]
+pub struct LibraryStats {
+    // Library section
+    pub books_in_library: i64,
+    pub with_isbn: i64,
+    pub in_a_series: i64,
+    pub enriched: i64,
+    // Want list section
+    pub want_total: i64,
+    pub want_with_isbn: i64,
+    pub want_by_goodreads_csv: i64,
+    pub want_by_manual: i64,
+    pub want_by_openlibrary: i64,
+    pub want_by_text_file: i64,
+    // Grab list (not owned)
+    pub grab_count: i64,
+}
 
 /// A row from the `editions` table.
 #[derive(Debug, Clone)]
@@ -83,6 +107,8 @@ pub async fn open(path: &Path) -> anyhow::Result<DbPool> {
 /// Insert an edition row if the `source_path` does not already exist.
 /// Returns the `id` of the row (new or existing).
 pub async fn upsert_edition(pool: &DbPool, meta: &EpubMeta) -> anyhow::Result<i64> {
+    // Normalize ISBN on storage so comparisons always work (Issue 1).
+    let normalized_isbn = meta.isbn.as_deref().map(normalize_isbn);
     // Try to insert; silently ignore conflicts on source_path UNIQUE constraint.
     sqlx::query(
         r"INSERT OR IGNORE INTO editions
@@ -92,7 +118,7 @@ pub async fn upsert_edition(pool: &DbPool, meta: &EpubMeta) -> anyhow::Result<i6
     )
     .bind(&meta.title)
     .bind(&meta.authors)
-    .bind(&meta.isbn)
+    .bind(&normalized_isbn)
     .bind(&meta.series_name)
     .bind(&meta.series_position)
     .bind(&meta.publisher)
@@ -195,6 +221,8 @@ pub async fn apply_enrichment(
     edition_id: i64,
     update: &EnrichmentUpdate,
 ) -> anyhow::Result<()> {
+    // Normalize ISBN on storage (Issue 1).
+    let normalized_isbn = update.isbn.as_deref().map(normalize_isbn);
     sqlx::query(
         r"UPDATE editions SET
             title        = COALESCE(title,        ?),
@@ -212,7 +240,7 @@ pub async fn apply_enrichment(
     .bind(&update.publisher)
     .bind(&update.publish_date)
     .bind(&update.description)
-    .bind(&update.isbn)
+    .bind(&normalized_isbn)
     .bind(&update.enriched_at)
     .bind(update.enrichment_attempted)
     .bind(edition_id)
@@ -443,17 +471,30 @@ pub async fn want_entries_needing_enrichment(pool: &DbPool) -> anyhow::Result<Ve
 }
 
 /// Return the first `want_list` row with `isbn13 = ?`, or `None`.
+/// The search value is normalized (hyphens/spaces stripped) before comparison.
 pub async fn find_want_by_isbn13(
     pool: &DbPool,
     isbn13: &str,
 ) -> anyhow::Result<Option<WantRow>> {
+    let normalized = normalize_isbn(isbn13);
     let row = sqlx::query("SELECT * FROM want_list WHERE isbn13 = ? LIMIT 1")
-        .bind(isbn13)
+        .bind(&normalized)
         .fetch_optional(pool)
         .await
         .context("find_want_by_isbn13")?;
 
     row.map(row_to_want).transpose()
+}
+
+/// Delete one `want_list` row by `id`.
+/// Returns `true` if a row was deleted, `false` if the id was not found.
+pub async fn delete_want(pool: &DbPool, id: i64) -> anyhow::Result<bool> {
+    let result = sqlx::query("DELETE FROM want_list WHERE id = ?")
+        .bind(id)
+        .execute(pool)
+        .await
+        .context("delete_want")?;
+    Ok(result.rows_affected() > 0)
 }
 
 /// Return all rows from `want_list` (no filter); used by the grab command.
@@ -479,6 +520,74 @@ fn row_to_want(row: sqlx::sqlite::SqliteRow) -> anyhow::Result<WantRow> {
         priority: row.try_get("priority")?,
         notes: row.try_get("notes")?,
     })
+}
+
+/// Collect library statistics using a series of COUNT queries in a single
+/// read transaction.
+pub async fn library_stats(pool: &DbPool) -> anyhow::Result<LibraryStats> {
+    let mut tx = pool.begin().await.context("library_stats begin tx")?;
+
+    macro_rules! count {
+        ($q:expr) => {{
+            sqlx::query($q)
+                .fetch_one(&mut *tx)
+                .await
+                .context(concat!("library_stats query: ", $q))?
+                .try_get::<i64, _>(0)?
+        }};
+    }
+
+    let books_in_library =
+        count!("SELECT COUNT(*) FROM editions WHERE owned = 1");
+    let with_isbn =
+        count!("SELECT COUNT(*) FROM editions WHERE owned = 1 AND isbn IS NOT NULL");
+    let in_a_series =
+        count!("SELECT COUNT(*) FROM editions WHERE owned = 1 AND series_name IS NOT NULL");
+    let enriched =
+        count!("SELECT COUNT(*) FROM editions WHERE owned = 1 AND enriched_at IS NOT NULL");
+
+    let want_total = count!("SELECT COUNT(*) FROM want_list");
+    let want_with_isbn = count!("SELECT COUNT(*) FROM want_list WHERE isbn13 IS NOT NULL");
+    let want_by_goodreads_csv =
+        count!("SELECT COUNT(*) FROM want_list WHERE source = 'goodreads_csv'");
+    let want_by_manual = count!("SELECT COUNT(*) FROM want_list WHERE source = 'manual'");
+    let want_by_openlibrary =
+        count!("SELECT COUNT(*) FROM want_list WHERE source = 'openlibrary'");
+    let want_by_text_file = count!("SELECT COUNT(*) FROM want_list WHERE source = 'text_file'");
+
+    // Grab count: want entries where isbn13 is NOT matched by any owned edition.
+    let grab_count = sqlx::query(
+        r"SELECT COUNT(*) FROM want_list w
+          WHERE NOT EXISTS (
+              SELECT 1 FROM editions e
+              WHERE e.isbn = w.isbn13 AND e.owned = 1
+          )",
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .context("library_stats grab_count")?
+    .try_get::<i64, _>(0)?;
+
+    tx.rollback().await.context("library_stats rollback")?;
+
+    Ok(LibraryStats {
+        books_in_library,
+        with_isbn,
+        in_a_series,
+        enriched,
+        want_total,
+        want_with_isbn,
+        want_by_goodreads_csv,
+        want_by_manual,
+        want_by_openlibrary,
+        want_by_text_file,
+        grab_count,
+    })
+}
+
+/// Public wrapper around `row_to_edition` for use in sibling modules.
+pub fn row_to_edition_pub(row: sqlx::sqlite::SqliteRow) -> anyhow::Result<EditionRow> {
+    row_to_edition(row)
 }
 
 /// Convert a raw `sqlx::sqlite::SqliteRow` into an `EditionRow`.
@@ -518,6 +627,66 @@ mod tests {
     async fn test_open_creates_schema() {
         let (_pool, _tmp) = open_temp_db().await;
         // If we reach here without panic, schema was created successfully.
+    }
+
+    // -----------------------------------------------------------------------
+    // Category 3: Phase 1 → Phase 2 migration correctness
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_migration_from_phase1_preserves_editions() {
+        use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+        use std::str::FromStr;
+
+        let tmp = NamedTempFile::with_suffix(".db").unwrap();
+
+        // Step 1: Create a Phase-1-only DB by applying only 0001_initial.sql manually.
+        {
+            let url = format!("sqlite:{}", tmp.path().to_string_lossy());
+            let opts = SqliteConnectOptions::from_str(&url)
+                .unwrap()
+                .create_if_missing(true)
+                .foreign_keys(true);
+            let pool = SqlitePoolOptions::new().connect_with(opts).await.unwrap();
+            sqlx::query(include_str!("../migrations/0001_initial.sql"))
+                .execute(&pool)
+                .await
+                .unwrap();
+
+            // Step 2: Insert edition rows into the Phase-1 DB.
+            sqlx::query(
+                r"INSERT INTO editions (title, authors, source_path) VALUES ('Phase1 Book', 'Phase1 Author', '/tmp/phase1.epub')"
+            )
+            .execute(&pool)
+            .await
+            .unwrap();
+
+            pool.close().await;
+        }
+
+        // Step 3: Open the DB via db::open() — this runs migrate! which applies 0002_want_list.sql.
+        let pool = open(tmp.path()).await.unwrap();
+
+        // Step 4: want_list table must now exist.
+        let table_exists: bool = sqlx::query(
+            "SELECT COUNT(*) as cnt FROM sqlite_master WHERE type='table' AND name='want_list'",
+        )
+        .fetch_one(&pool)
+        .await
+        .map(|r| r.try_get::<i64, _>("cnt").unwrap_or(0) > 0)
+        .unwrap_or(false);
+        assert!(table_exists, "want_list table must exist after migration");
+
+        // Step 4b: The Phase-1 edition row must still be intact.
+        let editions = list_editions(&pool).await.unwrap();
+        assert_eq!(editions.len(), 1, "Phase-1 edition must survive migration");
+        assert_eq!(editions[0].title.as_deref(), Some("Phase1 Book"));
+
+        // Step 5: Running migrate! again (idempotent) must not error.
+        sqlx::migrate!("./migrations")
+            .run(&pool)
+            .await
+            .expect("second migrate run must be idempotent");
     }
 
     #[tokio::test]
@@ -768,6 +937,120 @@ mod tests {
 
         let found = find_work_by_ol_id(&pool, "/works/OL_NEW").await.unwrap();
         assert_eq!(found, Some(work_id));
+    }
+
+    // -----------------------------------------------------------------------
+    // Category 7: library_stats tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_library_stats_known_counts() {
+        let (pool, _tmp) = open_temp_db().await;
+
+        // Insert 3 owned editions: 2 with ISBN, 1 in a series, 1 enriched.
+        let meta1 = EpubMeta {
+            title: Some("Book A".to_string()),
+            authors: Some("Author".to_string()),
+            isbn: Some("9780000000001".to_string()),
+            source_path: "/tmp/stats_a.epub".to_string(),
+            series_name: Some("Series".to_string()),
+            ..Default::default()
+        };
+        let id1 = upsert_edition(&pool, &meta1).await.unwrap();
+        apply_enrichment(
+            &pool,
+            id1,
+            &EnrichmentUpdate {
+                enriched_at: Some("2026-01-01T00:00:00Z".to_string()),
+                enrichment_attempted: 1,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        let meta2 = EpubMeta {
+            title: Some("Book B".to_string()),
+            authors: Some("Author".to_string()),
+            isbn: Some("9780000000002".to_string()),
+            source_path: "/tmp/stats_b.epub".to_string(),
+            ..Default::default()
+        };
+        upsert_edition(&pool, &meta2).await.unwrap();
+
+        let meta3 = EpubMeta {
+            title: Some("Book C".to_string()),
+            authors: Some("Author".to_string()),
+            source_path: "/tmp/stats_c.epub".to_string(),
+            ..Default::default()
+        };
+        upsert_edition(&pool, &meta3).await.unwrap();
+
+        // Insert want list entries from different sources.
+        insert_want(&pool, "Want A", None, Some("9781000000001"), "goodreads_csv", None, 5, None)
+            .await
+            .unwrap();
+        insert_want(&pool, "Want B", None, None, "manual", None, 5, None)
+            .await
+            .unwrap();
+        insert_want(&pool, "Want C", None, None, "openlibrary", None, 5, None)
+            .await
+            .unwrap();
+        insert_want(&pool, "Want D", None, None, "text_file", None, 5, None)
+            .await
+            .unwrap();
+
+        let stats = library_stats(&pool).await.unwrap();
+
+        assert_eq!(stats.books_in_library, 3, "3 owned books");
+        assert_eq!(stats.with_isbn, 2, "2 books with ISBN");
+        assert_eq!(stats.in_a_series, 1, "1 book in a series");
+        assert_eq!(stats.enriched, 1, "1 enriched book");
+        assert_eq!(stats.want_total, 4, "4 want list entries");
+        assert_eq!(stats.want_with_isbn, 1, "1 want entry with ISBN");
+        assert_eq!(stats.want_by_goodreads_csv, 1);
+        assert_eq!(stats.want_by_manual, 1);
+        assert_eq!(stats.want_by_openlibrary, 1);
+        assert_eq!(stats.want_by_text_file, 1);
+        // Grab count: 4 want entries, none owned by ISBN match.
+        assert_eq!(stats.grab_count, 4);
+    }
+
+    #[tokio::test]
+    async fn test_delete_want_happy_path() {
+        let (pool, _tmp) = open_temp_db().await;
+        let id = insert_want(&pool, "Test Book", Some("Author"), None, "manual", None, 5, None)
+            .await
+            .unwrap();
+
+        let deleted = delete_want(&pool, id).await.unwrap();
+        assert!(deleted, "should return true when row is deleted");
+
+        let row = get_want(&pool, id).await.unwrap();
+        assert!(row.is_none(), "row should no longer exist after delete");
+    }
+
+    #[tokio::test]
+    async fn test_delete_want_nonexistent_returns_false() {
+        let (pool, _tmp) = open_temp_db().await;
+        let deleted = delete_want(&pool, 99999).await.unwrap();
+        assert!(!deleted, "should return false when id not found");
+    }
+
+    #[tokio::test]
+    async fn test_delete_want_not_in_list_want_after_removal() {
+        let (pool, _tmp) = open_temp_db().await;
+        let id = insert_want(&pool, "Gone Book", Some("Author"), None, "manual", None, 5, None)
+            .await
+            .unwrap();
+
+        delete_want(&pool, id).await.unwrap();
+
+        let all = list_want(&pool, None).await.unwrap();
+        assert!(
+            !all.iter().any(|r| r.id == id),
+            "deleted entry must not appear in list_want"
+        );
     }
 
     #[tokio::test]

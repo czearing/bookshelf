@@ -262,7 +262,7 @@ async fn test_e2e_grab_dedup_full_pipeline() {
     // ------------------------------------------------------------------
 
     let (csv_path, _csv_file) = write_temp_csv(GOODREADS_CSV);
-    let import_summary = want::import_goodreads_csv(&pool, &csv_path)
+    let import_summary = want::import_goodreads_csv(&pool, &csv_path, false)
         .await
         .unwrap();
 
@@ -293,7 +293,7 @@ async fn test_e2e_grab_dedup_full_pipeline() {
     // Step 4: Compute grab list
     // ------------------------------------------------------------------
 
-    let grab_list = grab::compute_grab_list(&pool).await.unwrap();
+    let grab_list = grab::compute_grab_list(&pool, None).await.unwrap();
 
     let grab_titles: Vec<&str> = grab_list
         .iter()
@@ -427,7 +427,7 @@ async fn test_e2e_goodreads_isbn_excel_format_stripped() {
     );
 
     let (path, _file) = write_temp_csv(csv);
-    want::import_goodreads_csv(&pool, &path).await.unwrap();
+    want::import_goodreads_csv(&pool, &path, false).await.unwrap();
 
     let rows = db::list_want(&pool, None).await.unwrap();
     assert_eq!(rows.len(), 1, "should have inserted 1 row");

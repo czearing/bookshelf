@@ -1,6 +1,7 @@
 use crate::{db, fuzzy};
 use anyhow::Context;
 use serde::Serialize;
+use sqlx::Row;
 
 /// One entry in the grab list (a book wanted but not yet owned).
 #[derive(Debug, Clone, Serialize)]
@@ -14,29 +15,73 @@ pub struct GrabEntry {
 }
 
 /// Compute the grab list: want_list entries that are not matched by any owned edition.
+///
+/// ISBN exact-match is performed via a single SQL EXISTS query to avoid loading
+/// all editions into memory (N+1 fix). Fuzzy and work-level checks are still
+/// performed in Rust because they require fuzzy-matching logic.
+///
+/// `min_priority`: when `Some(n)`, only include entries with `priority >= n`.
+///
 /// Sorted by priority descending, then title ascending (case-insensitive).
-pub async fn compute_grab_list(pool: &db::DbPool) -> anyhow::Result<Vec<GrabEntry>> {
-    let want_entries = db::all_want_entries(pool).await?;
-    let all_editions = db::list_editions(pool).await?;
+pub async fn compute_grab_list(
+    pool: &db::DbPool,
+    min_priority: Option<i64>,
+) -> anyhow::Result<Vec<GrabEntry>> {
+    // ---------------------------------------------------------------------------
+    // Step 1: ISBN exact match — resolved entirely in SQL.
+    // Returns IDs of want_list rows that ARE already owned by ISBN match.
+    // ---------------------------------------------------------------------------
+    let isbn_owned_ids: Vec<i64> = {
+        let rows = sqlx::query(
+            r"SELECT w.id FROM want_list w
+              WHERE w.isbn13 IS NOT NULL
+                AND EXISTS (
+                    SELECT 1 FROM editions e
+                    WHERE e.isbn = w.isbn13 AND e.owned = 1
+                )",
+        )
+        .fetch_all(pool)
+        .await
+        .context("compute_grab_list isbn EXISTS check")?;
+        rows.into_iter()
+            .map(|r| r.try_get::<i64, _>("id").unwrap_or(0))
+            .collect()
+    };
 
-    // Filter to only owned editions.
-    let owned: Vec<_> = all_editions.iter().filter(|e| e.owned == 1).collect();
+    // ---------------------------------------------------------------------------
+    // Step 2: Load want entries and owned editions for fuzzy / work-level passes.
+    // We only load editions needed for fuzzy: those that are owned.
+    // ---------------------------------------------------------------------------
+    let want_entries = db::all_want_entries(pool).await?;
+    // Load only owned editions (for fuzzy and work-level matching).
+    let owned_editions: Vec<db::EditionRow> = {
+        let rows = sqlx::query("SELECT * FROM editions WHERE owned = 1")
+            .fetch_all(pool)
+            .await
+            .context("compute_grab_list load owned editions")?;
+        rows.into_iter()
+            .map(db::row_to_edition_pub)
+            .collect::<anyhow::Result<Vec<_>>>()?
+    };
 
     let mut grab: Vec<GrabEntry> = Vec::new();
 
     'want: for want in &want_entries {
-        // Strategy AC-41a: ISBN-13 exact match.
-        if let Some(ref isbn) = want.isbn13 {
-            for ed in &owned {
-                if ed.isbn.as_deref() == Some(isbn.as_str()) {
-                    continue 'want; // owned
-                }
+        // Apply min_priority filter.
+        if let Some(min) = min_priority {
+            if want.priority < min {
+                continue 'want;
             }
+        }
+
+        // Strategy AC-41a: ISBN-13 exact match (already done in SQL).
+        if isbn_owned_ids.contains(&want.id) {
+            continue 'want; // owned by ISBN
         }
 
         // Strategy AC-41b: Fuzzy title+author (skip when author is NULL — AC-52).
         if let Some(ref author) = want.author {
-            for ed in &owned {
+            for ed in &owned_editions {
                 if fuzzy::is_same_work(
                     &want.title,
                     author,
@@ -50,16 +95,14 @@ pub async fn compute_grab_list(pool: &db::DbPool) -> anyhow::Result<Vec<GrabEntr
 
         // Strategy AC-41c: Work-level match via shared work_id.
         if let Some(ref isbn) = want.isbn13 {
-            // Find work_id for this ISBN in any edition.
-            let work_row = all_editions.iter().find(|e| {
-                e.isbn.as_deref() == Some(isbn.as_str()) && e.work_id.is_some()
+            let want_isbn_norm = crate::fuzzy::normalize_isbn(isbn);
+            let work_row = owned_editions.iter().find(|e| {
+                e.isbn.as_deref().map(crate::fuzzy::normalize_isbn) == Some(want_isbn_norm.clone())
+                    && e.work_id.is_some()
             });
             if let Some(ed_with_work) = work_row {
                 if let Some(wid) = ed_with_work.work_id {
-                    // Check if any owned edition shares that work_id.
-                    let owned_shares_work = owned
-                        .iter()
-                        .any(|e| e.work_id == Some(wid));
+                    let owned_shares_work = owned_editions.iter().any(|e| e.work_id == Some(wid));
                     if owned_shares_work {
                         continue 'want; // owned
                     }
@@ -257,5 +300,94 @@ mod tests {
         };
         let text = format_text(&[entry]);
         assert!(text.contains("(none)"));
+    }
+
+    // -----------------------------------------------------------------------
+    // Category 2: Performance test — 500 EPUBs, 200 want entries, < 2 seconds
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_compute_grab_list_performance() {
+        use crate::db;
+        use crate::epub::EpubMeta;
+        use std::time::Instant;
+        use tempfile::NamedTempFile;
+
+        let tmp = NamedTempFile::with_suffix(".db").unwrap();
+        let pool = db::open(tmp.path()).await.unwrap();
+
+        // Insert 500 owned editions with distinct ISBNs.
+        for i in 0..500u64 {
+            let isbn = format!("{:013}", 9780000000000u64 + i);
+            let meta = EpubMeta {
+                title: Some(format!("Perf Book {i}")),
+                authors: Some("Perf Author".to_string()),
+                isbn: Some(isbn.clone()),
+                source_path: format!("/tmp/perf_{i}.epub"),
+                ..Default::default()
+            };
+            db::upsert_edition(&pool, &meta).await.unwrap();
+        }
+
+        // Insert 200 want entries with ISBNs that do NOT match any owned edition.
+        for i in 0..200u64 {
+            let isbn = format!("{:013}", 9790000000000u64 + i);
+            db::insert_want(
+                &pool,
+                &format!("Want Book {i}"),
+                Some("Want Author"),
+                Some(&isbn),
+                "manual",
+                None,
+                5,
+                None,
+            )
+            .await
+            .unwrap();
+        }
+
+        let start = Instant::now();
+        let entries = compute_grab_list(&pool, None).await.unwrap();
+        let elapsed = start.elapsed();
+
+        assert_eq!(entries.len(), 200, "all 200 want entries should appear in grab list");
+        assert!(
+            elapsed.as_secs_f64() < 2.0,
+            "compute_grab_list took {:.3}s, must complete in under 2 seconds",
+            elapsed.as_secs_f64()
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Category 8: min_priority filter test
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_compute_grab_list_min_priority_filter() {
+        use crate::db;
+        use tempfile::NamedTempFile;
+
+        let tmp = NamedTempFile::with_suffix(".db").unwrap();
+        let pool = db::open(tmp.path()).await.unwrap();
+
+        // Insert want entries with priorities 3, 5, 7, 8.
+        for (title, priority) in &[("Book3", 3i64), ("Book5", 5), ("Book7", 7), ("Book8", 8)] {
+            db::insert_want(&pool, title, Some("Author"), None, "manual", None, *priority, None)
+                .await
+                .unwrap();
+        }
+
+        // With min_priority=6, only 7 and 8 should appear.
+        let entries = compute_grab_list(&pool, Some(6)).await.unwrap();
+        let titles: Vec<&str> = entries
+            .iter()
+            .filter_map(|e| e.title.as_deref())
+            .collect();
+
+        assert!(titles.contains(&"Book7"), "priority 7 must be included");
+        assert!(titles.contains(&"Book8"), "priority 8 must be included");
+        assert!(!titles.contains(&"Book3"), "priority 3 must be excluded");
+        assert!(!titles.contains(&"Book5"), "priority 5 must be excluded");
+        assert_eq!(entries.len(), 2);
     }
 }

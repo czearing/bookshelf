@@ -30,6 +30,8 @@ enum Commands {
     Want(WantArgs),
     /// Compare want list against owned editions and output the grab list
     Grab(GrabArgs),
+    /// Display library statistics
+    Stats,
 }
 
 #[derive(Parser)]
@@ -70,6 +72,8 @@ enum WantCommands {
     List(WantListArgs),
     /// Enrich want list entries by resolving missing ISBN-13 values
     Enrich,
+    /// Remove an entry from the want list by ID
+    Remove(WantRemoveArgs),
 }
 
 #[derive(Parser)]
@@ -92,6 +96,9 @@ enum WantImportCommands {
 struct GoodreadsArgs {
     /// Path to the Goodreads CSV export file
     path: PathBuf,
+    /// Import from all shelves instead of only to-read
+    #[arg(long)]
+    all_shelves: bool,
 }
 
 #[derive(Parser)]
@@ -128,10 +135,19 @@ struct WantListArgs {
 }
 
 #[derive(Parser)]
+struct WantRemoveArgs {
+    /// ID of the want list entry to remove
+    id: i64,
+}
+
+#[derive(Parser)]
 struct GrabArgs {
     /// Output format: text (default), json, or csv
     #[arg(long, default_value = "text")]
     output: String,
+    /// Only include want list entries with priority >= N
+    #[arg(long)]
+    min_priority: Option<i64>,
 }
 
 fn main() {
@@ -161,6 +177,7 @@ async fn async_run(cli: Cli) -> anyhow::Result<()> {
         Commands::Enrich => cmd_enrich(&pool).await?,
         Commands::Want(args) => cmd_want(&pool, args).await?,
         Commands::Grab(args) => cmd_grab(&pool, args).await?,
+        Commands::Stats => cmd_stats(&pool).await?,
     }
 
     Ok(())
@@ -433,13 +450,16 @@ async fn cmd_want(pool: &db::DbPool, args: WantArgs) -> anyhow::Result<()> {
         WantCommands::Add(add_args) => cmd_want_add(pool, add_args).await?,
         WantCommands::List(list_args) => cmd_want_list(pool, list_args).await?,
         WantCommands::Enrich => cmd_want_enrich(pool).await?,
+        WantCommands::Remove(remove_args) => cmd_want_remove(pool, remove_args).await?,
     }
     Ok(())
 }
 
 async fn cmd_want_import(pool: &db::DbPool, args: WantImportArgs) -> anyhow::Result<()> {
     match args.command {
-        WantImportCommands::Goodreads(a) => cmd_want_import_goodreads(pool, a.path).await?,
+        WantImportCommands::Goodreads(a) => {
+            cmd_want_import_goodreads(pool, a.path, a.all_shelves).await?
+        }
         WantImportCommands::Openlibrary(a) => {
             cmd_want_import_openlibrary(pool, a.username).await?
         }
@@ -451,8 +471,9 @@ async fn cmd_want_import(pool: &db::DbPool, args: WantImportArgs) -> anyhow::Res
 async fn cmd_want_import_goodreads(
     pool: &db::DbPool,
     path: PathBuf,
+    all_shelves: bool,
 ) -> anyhow::Result<()> {
-    if let Err(e) = want::import_goodreads_csv(pool, &path).await {
+    if let Err(e) = want::import_goodreads_csv(pool, &path, all_shelves).await {
         eprintln!("Error: {e}");
         std::process::exit(1);
     }
@@ -539,6 +560,19 @@ async fn cmd_want_list(pool: &db::DbPool, args: WantListArgs) -> anyhow::Result<
     Ok(())
 }
 
+async fn cmd_want_remove(pool: &db::DbPool, args: WantRemoveArgs) -> anyhow::Result<()> {
+    // Get the title before deleting so we can print it.
+    let row = db::get_want(pool, args.id).await?;
+    let Some(row) = row else {
+        eprintln!("Error: no want list entry with id {}", args.id);
+        std::process::exit(1);
+    };
+    let title = row.title.clone();
+    want::remove_want(pool, args.id).await?;
+    println!("Removed: {title}");
+    Ok(())
+}
+
 async fn cmd_want_enrich(pool: &db::DbPool) -> anyhow::Result<()> {
     let client = reqwest::Client::new();
     let (enriched, eligible) =
@@ -574,7 +608,7 @@ async fn cmd_grab(pool: &db::DbPool, args: GrabArgs) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let entries = grab::compute_grab_list(pool).await?;
+    let entries = grab::compute_grab_list(pool, args.min_priority).await?;
 
     if entries.is_empty() {
         match args.output.as_str() {
@@ -602,6 +636,29 @@ async fn cmd_grab(pool: &db::DbPool, args: GrabArgs) -> anyhow::Result<()> {
         }
     }
 
+    Ok(())
+}
+
+async fn cmd_stats(pool: &db::DbPool) -> anyhow::Result<()> {
+    let s = db::library_stats(pool).await?;
+    println!("Library Statistics");
+    println!("{}", "\u{2500}".repeat(18));
+    println!("Books in library:    {:>6}", s.books_in_library);
+    println!("  With ISBN:         {:>6}", s.with_isbn);
+    println!("  In a series:       {:>6}", s.in_a_series);
+    println!("  Enriched:          {:>6}", s.enriched);
+    println!();
+    println!("Want List");
+    println!("{}", "\u{2500}".repeat(18));
+    println!("Total entries:       {:>6}", s.want_total);
+    println!("  With ISBN:         {:>6}", s.want_with_isbn);
+    println!("  By source:");
+    println!("    Goodreads CSV:   {:>6}", s.want_by_goodreads_csv);
+    println!("    Manual:          {:>6}", s.want_by_manual);
+    println!("    OpenLibrary:     {:>6}", s.want_by_openlibrary);
+    println!("    Text file:       {:>6}", s.want_by_text_file);
+    println!();
+    println!("Grab List (not owned):{:>5}", s.grab_count);
     Ok(())
 }
 

@@ -229,7 +229,7 @@ fn test_case_04_multiple_authors_with_comma() {
 }
 
 // ---------------------------------------------------------------------------
-// Case 5: ISBN-10 with hyphens via opf:scheme="ISBN"
+// Case 5: ISBN-10 with hyphens via opf:scheme="ISBN" — normalized on store (Issue 1)
 // ---------------------------------------------------------------------------
 #[test]
 fn test_case_05_isbn10_with_hyphens() {
@@ -241,11 +241,12 @@ fn test_case_05_isbn10_with_hyphens() {
     );
     let tmp = make_epub_raw(opf.as_bytes(), "content.opf");
     let meta = epub::parse_epub(tmp.path()).unwrap();
-    assert_eq!(meta.isbn.as_deref(), Some("0-306-40615-2"));
+    // Hyphens are now stripped on parse so ISBNs compare correctly (Issue 1).
+    assert_eq!(meta.isbn.as_deref(), Some("0306406152"));
 }
 
 // ---------------------------------------------------------------------------
-// Case 6: ISBN-13 with hyphens
+// Case 6: ISBN-13 with hyphens — normalized on store (Issue 1)
 // ---------------------------------------------------------------------------
 #[test]
 fn test_case_06_isbn13_with_hyphens() {
@@ -257,7 +258,8 @@ fn test_case_06_isbn13_with_hyphens() {
     );
     let tmp = make_epub_raw(opf.as_bytes(), "content.opf");
     let meta = epub::parse_epub(tmp.path()).unwrap();
-    assert_eq!(meta.isbn.as_deref(), Some("978-0-306-40615-7"));
+    // Hyphens are now stripped on parse so ISBNs compare correctly (Issue 1).
+    assert_eq!(meta.isbn.as_deref(), Some("9780306406157"));
 }
 
 // ---------------------------------------------------------------------------

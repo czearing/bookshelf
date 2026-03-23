@@ -1,5 +1,19 @@
 use strsim::jaro_winkler;
 
+// ---------------------------------------------------------------------------
+// ISBN normalization
+// ---------------------------------------------------------------------------
+
+/// Strip hyphens, whitespace, and any non-digit/non-X characters from an
+/// ISBN string so that `"978-0-441-01359-3"` and `"9780441013593"` compare
+/// equal.  The letter `X` (check digit for ISBN-10) is preserved.
+pub fn normalize_isbn(s: &str) -> String {
+    s.chars()
+        .filter(|c| c.is_ascii_digit() || *c == 'X' || *c == 'x')
+        .map(|c| if c == 'x' { 'X' } else { c })
+        .collect()
+}
+
 /// Similarity threshold for work deduplication during scan.
 /// Two books with no ISBN scoring >= this value share a `work_id`.
 pub const DEDUP_THRESHOLD: f64 = 0.85;
@@ -122,5 +136,27 @@ mod tests {
     #[test]
     fn test_search_threshold_constant() {
         assert_eq!(SEARCH_THRESHOLD, 0.72);
+    }
+
+    // ISBN normalization tests (Issue 1)
+    #[test]
+    fn test_normalize_isbn_strips_hyphens() {
+        assert_eq!(normalize_isbn("978-0-441-01359-3"), "9780441013593");
+    }
+
+    #[test]
+    fn test_normalize_isbn_strips_spaces() {
+        assert_eq!(normalize_isbn("978 0 441 01359 3"), "9780441013593");
+    }
+
+    #[test]
+    fn test_normalize_isbn_passthrough() {
+        assert_eq!(normalize_isbn("9780441013593"), "9780441013593");
+    }
+
+    #[test]
+    fn test_normalize_isbn_preserves_x_check_digit() {
+        // ISBN-10 with X check digit
+        assert_eq!(normalize_isbn("0-306-40615-X"), "030640615X");
     }
 }

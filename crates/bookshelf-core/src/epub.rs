@@ -1,3 +1,4 @@
+use crate::fuzzy::normalize_isbn;
 use anyhow::{anyhow, Context};
 use quick_xml::events::Event;
 use quick_xml::Reader;
@@ -45,6 +46,17 @@ pub fn parse_epub(path: &Path) -> anyhow::Result<EpubMeta> {
         extract_opf_path(&buf)
             .ok_or_else(|| anyhow!("no rootfile element in META-INF/container.xml"))?
     };
+
+    // Step 2: validate the OPF path before using it (Category 6 — path traversal guard).
+    // `ZipArchive::by_name` reads only ZIP entries and cannot traverse the filesystem,
+    // but we still reject paths containing `..` to prevent any future filesystem
+    // path construction from accidentally following a traversal component.
+    if opf_path.contains("..") {
+        return Err(anyhow!(
+            "OPF path '{}' contains '..'; rejecting to prevent path traversal",
+            opf_path
+        ));
+    }
 
     // Step 2: read the OPF file.
     let opf_content = {
@@ -260,7 +272,8 @@ fn parse_opf(xml: &str) -> anyhow::Result<EpubMeta> {
                         if (current_id_is_isbn || looks_like_isbn(&text))
                             && meta.isbn.is_none()
                         {
-                            meta.isbn = Some(text);
+                            // Issue 1: normalize before storing (strip hyphens/spaces).
+                            meta.isbn = Some(normalize_isbn(&text));
                         }
                     }
                     Some(b"__belongs_to_collection") => {
@@ -526,6 +539,50 @@ pub mod tests {
         zip.write_all(b"application/epub+zip").unwrap();
         zip.finish().unwrap();
         assert!(parse_epub(tmp.path()).is_err());
+    }
+
+    // Category 6: ZIP path traversal guard
+    #[test]
+    fn test_parse_epub_path_traversal_returns_err() {
+        use std::io::Write;
+
+        let tmp = NamedTempFile::with_suffix(".epub").unwrap();
+        let file = std::fs::OpenOptions::new()
+            .write(true)
+            .open(tmp.path())
+            .unwrap();
+        let mut zip = zip::ZipWriter::new(file);
+        let opts =
+            zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Stored);
+
+        zip.start_file("mimetype", opts).unwrap();
+        zip.write_all(b"application/epub+zip").unwrap();
+
+        // container.xml that references a path traversal OPF path.
+        zip.start_file("META-INF/container.xml", opts).unwrap();
+        zip.write_all(
+            br#"<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="../../malicious.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>"#,
+        )
+        .unwrap();
+
+        zip.finish().unwrap();
+
+        // parse_epub must return Err, not attempt a filesystem read.
+        let result = parse_epub(tmp.path());
+        assert!(
+            result.is_err(),
+            "parse_epub must reject path traversal OPF paths"
+        );
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(
+            err_msg.contains("..") || err_msg.contains("traversal"),
+            "error message must reference the rejected path, got: {err_msg}"
+        );
     }
 
     #[test]
