@@ -81,7 +81,7 @@ async fn test_follow_add_inserts_author_and_works() {
         .await;
 
     let client = reqwest::Client::new();
-    let result = follow::follow_add(&pool, &client, "Test Author", &server.uri())
+    let result = follow::follow_add(&pool, &client, "Test Author", &server.uri(), None)
         .await
         .unwrap();
 
@@ -97,7 +97,7 @@ async fn test_follow_add_inserts_author_and_works() {
     assert!(row.added_at.contains('T'));
 
     // Want list has both works.
-    let wants = db::list_want(&pool, None).await.unwrap();
+    let wants = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(wants.len(), 2);
     let titles: Vec<&str> = wants.iter().map(|w| w.title.as_str()).collect();
     assert!(titles.contains(&"Dune Chronicles: The First Volume"));
@@ -146,12 +146,12 @@ async fn test_follow_add_pagination() {
         .await;
 
     let client = reqwest::Client::new();
-    let result = follow::follow_add(&pool, &client, "Paginated Author", &server.uri())
+    let result = follow::follow_add(&pool, &client, "Paginated Author", &server.uri(), None)
         .await
         .unwrap();
 
     assert_eq!(result, follow::FollowAddResult::Added { works_queued: 2 });
-    let wants = db::list_want(&pool, None).await.unwrap();
+    let wants = db::list_want(&pool, None, None).await.unwrap();
     let titles: Vec<&str> = wants.iter().map(|w| w.title.as_str()).collect();
     assert!(titles.contains(&"The Left Hand of Darkness"));
     assert!(titles.contains(&"The Dispossessed: An Ambiguous Utopia"));
@@ -201,12 +201,12 @@ async fn test_follow_add_skips_owned() {
         .await;
 
     let client = reqwest::Client::new();
-    let result = follow::follow_add(&pool, &client, "The Author", &server.uri())
+    let result = follow::follow_add(&pool, &client, "The Author", &server.uri(), None)
         .await
         .unwrap();
 
     assert_eq!(result, follow::FollowAddResult::Added { works_queued: 0 });
-    let wants = db::list_want(&pool, None).await.unwrap();
+    let wants = db::list_want(&pool, None, None).await.unwrap();
     assert!(wants.is_empty(), "owned books must not be queued");
 }
 
@@ -248,13 +248,13 @@ async fn test_follow_add_no_duplicate_want() {
         .await;
 
     let client = reqwest::Client::new();
-    let result = follow::follow_add(&pool, &client, "The Author", &server.uri())
+    let result = follow::follow_add(&pool, &client, "The Author", &server.uri(), None)
         .await
         .unwrap();
 
     assert_eq!(result, follow::FollowAddResult::Added { works_queued: 0 });
     // Still only 1 row.
-    let wants = db::list_want(&pool, None).await.unwrap();
+    let wants = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(wants.len(), 1, "must not insert duplicate want entry");
 }
 
@@ -274,7 +274,7 @@ async fn test_follow_add_author_not_found() {
         .await;
 
     let client = reqwest::Client::new();
-    let result = follow::follow_add(&pool, &client, "Nonexistent XYZ999", &server.uri())
+    let result = follow::follow_add(&pool, &client, "Nonexistent XYZ999", &server.uri(), None)
         .await
         .unwrap();
 
@@ -300,7 +300,7 @@ async fn test_follow_add_already_followed() {
 
     let server = MockServer::start().await;
     let client = reqwest::Client::new();
-    let result = follow::follow_add(&pool, &client, "Known Author", &server.uri())
+    let result = follow::follow_add(&pool, &client, "Known Author", &server.uri(), None)
         .await
         .unwrap();
 
@@ -326,7 +326,7 @@ async fn test_follow_add_network_error_no_partial_row() {
         .await;
 
     let client = reqwest::Client::new();
-    let result = follow::follow_add(&pool, &client, "Error Author", &server.uri()).await;
+    let result = follow::follow_add(&pool, &client, "Error Author", &server.uri(), None).await;
 
     assert!(result.is_err(), "HTTP 500 must return Err");
     let row = db::find_followed_author_by_name(&pool, "Error Author")
@@ -383,7 +383,7 @@ async fn test_follow_remove_preserves_want_list() {
 
     follow::follow_remove(&pool, "The Author").await.unwrap();
 
-    let wants = db::list_want(&pool, None).await.unwrap();
+    let wants = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(wants.len(), 1, "want_list must be untouched after follow_remove");
 }
 
@@ -424,7 +424,7 @@ async fn test_follow_sync_empty() {
     let (pool, _tmp) = temp_pool().await;
     let server = MockServer::start().await;
     let client = reqwest::Client::new();
-    let result = follow::follow_sync(&pool, &client, &server.uri()).await.unwrap();
+    let result = follow::follow_sync(&pool, &client, &server.uri(), None).await.unwrap();
     assert_eq!(result, 0);
 }
 
@@ -456,10 +456,10 @@ async fn test_follow_sync_adds_new_works() {
         .await;
 
     let client = reqwest::Client::new();
-    let synced = follow::follow_sync(&pool, &client, &server.uri()).await.unwrap();
+    let synced = follow::follow_sync(&pool, &client, &server.uri(), None).await.unwrap();
     assert_eq!(synced, 1);
 
-    let wants = db::list_want(&pool, None).await.unwrap();
+    let wants = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(wants.len(), 1);
     assert_eq!(wants[0].title, "New Work");
     assert_eq!(wants[0].source, "author_follow");
@@ -485,10 +485,10 @@ async fn test_follow_sync_no_new_works() {
         .await;
 
     let client = reqwest::Client::new();
-    let synced = follow::follow_sync(&pool, &client, &server.uri()).await.unwrap();
+    let synced = follow::follow_sync(&pool, &client, &server.uri(), None).await.unwrap();
     assert_eq!(synced, 1);
 
-    let wants = db::list_want(&pool, None).await.unwrap();
+    let wants = db::list_want(&pool, None, None).await.unwrap();
     assert!(wants.is_empty(), "no want entries when catalog is empty");
 }
 
@@ -522,7 +522,7 @@ async fn test_follow_sync_updates_last_synced() {
         .await;
 
     let client = reqwest::Client::new();
-    follow::follow_sync(&pool, &client, &server.uri()).await.unwrap();
+    follow::follow_sync(&pool, &client, &server.uri(), None).await.unwrap();
 
     let after = db::find_followed_author_by_name(&pool, "Sync TS Author")
         .await
@@ -574,7 +574,7 @@ async fn test_follow_sync_partial_failure_continues() {
         .await;
 
     let client = reqwest::Client::new();
-    let result = follow::follow_sync(&pool, &client, &server.uri()).await;
+    let result = follow::follow_sync(&pool, &client, &server.uri(), None).await;
 
     // Must return Err.
     assert!(result.is_err(), "follow_sync must return Err when any author failed");
@@ -586,8 +586,32 @@ async fn test_follow_sync_partial_failure_continues() {
         .unwrap();
     assert!(good_row.last_synced.is_some());
 
+    // Bad Author's last_synced must NOT have been changed by the failed sync.
+    // Set it to a known sentinel value before the sync so we can compare afterward.
+    // (insert_followed_author sets last_synced = now at insert; we overwrite it with a
+    // distinctive sentinel so any change by follow_sync is detectable.)
+    let sentinel = "2000-01-01T00:00:00Z";
+    sqlx::query("UPDATE followed_authors SET last_synced = ? WHERE name = 'Bad Author'")
+        .bind(sentinel)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let client2 = reqwest::Client::new();
+    let _ = follow::follow_sync(&pool, &client2, &server.uri(), None).await; // may return Err
+
+    let bad_row = db::find_followed_author_by_name(&pool, "Bad Author")
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        bad_row.last_synced.as_deref(),
+        Some(sentinel),
+        "failed author must not have last_synced changed by follow_sync"
+    );
+
     // Want list has Good Author's work.
-    let wants = db::list_want(&pool, None).await.unwrap();
+    let wants = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(wants.len(), 1);
     assert_eq!(wants[0].title, "Good Work");
 }
@@ -666,14 +690,14 @@ async fn test_follow_add_to_grab_e2e() {
         .await;
 
     let client = reqwest::Client::new();
-    let result = follow::follow_add(&pool, &client, "Frank Herbert", &server.uri())
+    let result = follow::follow_add(&pool, &client, "Frank Herbert", &server.uri(), None)
         .await
         .unwrap();
 
     // "Dune" is owned → skipped by fuzzy match. 2 works queued.
     assert_eq!(result, follow::FollowAddResult::Added { works_queued: 2 });
 
-    let wants = db::list_want(&pool, None).await.unwrap();
+    let wants = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(wants.len(), 2, "exactly 2 unowned works must be in want_list");
 
     let titles: Vec<&str> = wants.iter().map(|w| w.title.as_str()).collect();
@@ -760,12 +784,12 @@ async fn test_list_want_source_filter_author_follow() {
         .await;
 
     let client = reqwest::Client::new();
-    follow::follow_add(&pool, &client, "Robert Heinlein", &server.uri())
+    follow::follow_add(&pool, &client, "Robert Heinlein", &server.uri(), None)
         .await
         .unwrap();
 
     // list_want with source="author_follow" must return the 2 queued entries.
-    let author_follow_entries = db::list_want(&pool, Some("author_follow")).await.unwrap();
+    let author_follow_entries = db::list_want(&pool, Some("author_follow"), None).await.unwrap();
     assert_eq!(
         author_follow_entries.len(),
         2,
@@ -777,14 +801,14 @@ async fn test_list_want_source_filter_author_follow() {
     );
 
     // list_want with source="series_fill" must return empty (no series_fill entries yet).
-    let series_fill_entries = db::list_want(&pool, Some("series_fill")).await.unwrap();
+    let series_fill_entries = db::list_want(&pool, Some("series_fill"), None).await.unwrap();
     assert!(
         series_fill_entries.is_empty(),
         "list_want(series_fill) must return empty when no series_fill entries exist"
     );
 
     // list_want with source="invalid_source" must return Err (validation rejection).
-    let invalid_result = db::list_want(&pool, Some("invalid_source")).await;
+    let invalid_result = db::list_want(&pool, Some("invalid_source"), None).await;
     assert!(
         invalid_result.is_err(),
         "list_want(invalid_source) must return Err"
@@ -829,13 +853,13 @@ async fn test_follow_add_case_insensitive_duplicate_detection() {
 
     let client = reqwest::Client::new();
 
-    let result1 = follow::follow_add(&pool, &client, "Frank Herbert", &server.uri())
+    let result1 = follow::follow_add(&pool, &client, "Frank Herbert", &server.uri(), None)
         .await
         .unwrap();
     assert_eq!(result1, follow::FollowAddResult::Added { works_queued: 0 });
 
     // Second call: "frank herbert" (lowercase) — must return AlreadyFollowed.
-    let result2 = follow::follow_add(&pool, &client, "frank herbert", &server.uri())
+    let result2 = follow::follow_add(&pool, &client, "frank herbert", &server.uri(), None)
         .await
         .unwrap();
     assert_eq!(
@@ -847,4 +871,376 @@ async fn test_follow_add_case_insensitive_duplicate_detection() {
     // Must be exactly 1 row in followed_authors.
     let all = db::list_followed_authors(&pool).await.unwrap();
     assert_eq!(all.len(), 1, "must be exactly 1 followed author after case-variant add");
+}
+
+// ---------------------------------------------------------------------------
+// GAP-17: delete_followed_author must be case-insensitive (symmetric with
+// find_followed_author_by_name which already uses LOWER(name) = LOWER(?)).
+// Prior bug: DELETE used WHERE name = ? (case-sensitive) so removing with a
+// different case silently failed.
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_follow_remove_case_insensitive() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Insert "Frank Herbert" directly so we don't need a mock server.
+    db::insert_followed_author(&pool, "Frank Herbert", Some("/authors/OL25374A"))
+        .await
+        .unwrap();
+
+    // Remove with lowercase name — must succeed.
+    let removed = db::delete_followed_author(&pool, "frank herbert").await.unwrap();
+    assert!(removed, "delete_followed_author must succeed even when case differs from stored name");
+
+    let all = db::list_followed_authors(&pool).await.unwrap();
+    assert!(all.is_empty(), "followed_authors must be empty after case-insensitive remove");
+}
+
+#[tokio::test]
+async fn test_follow_remove_uppercase_variant() {
+    let (pool, _tmp) = temp_pool().await;
+
+    db::insert_followed_author(&pool, "isaac asimov", None)
+        .await
+        .unwrap();
+
+    // Remove using title-cased variant.
+    let removed = db::delete_followed_author(&pool, "Isaac Asimov").await.unwrap();
+    assert!(removed, "delete_followed_author must match regardless of stored casing");
+
+    let all = db::list_followed_authors(&pool).await.unwrap();
+    assert!(all.is_empty());
+}
+
+// ---------------------------------------------------------------------------
+// GAP-07: follow_add partial insert when works-fetch fails
+// ---------------------------------------------------------------------------
+
+/// When OL author search succeeds (author row inserted) but the subsequent
+/// works fetch returns HTTP 500, follow_add propagates the error.
+/// The author row IS left in followed_authors (known partial-state behaviour).
+/// Subsequent follow_add calls return AlreadyFollowed — documenting the
+/// current behaviour so any future fix is immediately visible.
+#[tokio::test]
+async fn test_follow_add_partial_state_when_works_fetch_fails() {
+    let (pool, _tmp) = temp_pool().await;
+    let server = MockServer::start().await;
+
+    // Author search succeeds.
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search/authors\.json"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(author_search_body("/authors/OL_PARTIAL")),
+        )
+        .mount(&server)
+        .await;
+
+    // Works fetch fails.
+    Mock::given(method("GET"))
+        .and(path_regex(r"/authors/OL_PARTIAL/works\.json"))
+        .respond_with(ResponseTemplate::new(500))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    let result = follow::follow_add(&pool, &client, "Partial Author", &server.uri(), None).await;
+
+    // follow_add propagates the error from the works fetch.
+    assert!(result.is_err(), "follow_add must return Err when works fetch fails");
+
+    // The author row was inserted before the works fetch.
+    let row = db::find_followed_author_by_name(&pool, "Partial Author")
+        .await
+        .unwrap();
+    assert!(
+        row.is_some(),
+        "author row is left in followed_authors after partial failure (known behaviour)"
+    );
+
+    // A second follow_add call returns AlreadyFollowed — the user cannot
+    // retry without first removing the author manually.
+    let result2 = follow::follow_add(&pool, &client, "Partial Author", &server.uri(), None)
+        .await
+        .unwrap();
+    assert_eq!(
+        result2,
+        follow::FollowAddResult::AlreadyFollowed,
+        "second follow_add must return AlreadyFollowed due to partial-insert state"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// GAP-08: follow_sync NULL-ol_key re-query failure path
+// ---------------------------------------------------------------------------
+
+/// An author stored with ol_key = NULL triggers a re-query during sync.
+/// If the re-query returns no results, follow_sync emits a warning,
+/// sets had_error, and returns Err — but processes other authors first.
+#[tokio::test]
+async fn test_follow_sync_null_ol_key_author_not_found_returns_err() {
+    let (pool, _tmp) = temp_pool().await;
+    let server = MockServer::start().await;
+
+    // Insert author with no ol_key.
+    db::insert_followed_author(&pool, "Unknown Author", None)
+        .await
+        .unwrap();
+
+    // Re-query search returns empty docs.
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search/authors\.json"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(author_search_empty()),
+        )
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    let result = follow::follow_sync(&pool, &client, &server.uri(), None).await;
+
+    // follow_sync returns Err when any author fails.
+    assert!(result.is_err(), "follow_sync must return Err when NULL-ol_key author cannot be found");
+
+    // last_synced must not have been updated for the failed author.
+    let row = db::find_followed_author_by_name(&pool, "Unknown Author")
+        .await
+        .unwrap()
+        .unwrap();
+    // last_synced was set at insert time — it should not have changed
+    // because the author was not successfully synced.
+    assert!(row.last_synced.is_some(), "last_synced was set at insert");
+    // No want entries should have been created.
+    let wants = db::list_want(&pool, None, None).await.unwrap();
+    assert!(wants.is_empty(), "no want entries must be created for unresolvable author");
+}
+
+// ---------------------------------------------------------------------------
+// AC-11/AC-12: follow_add filters foreign-article titles when language=Some("eng")
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_follow_add_filters_foreign_articles_when_eng() {
+    let (pool, _tmp) = temp_pool().await;
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search/authors\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            author_search_body("/authors/OL_LANG1A"),
+        ))
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/authors/OL_LANG1A/works\.json"))
+        .and(query_param("offset", "50"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(works_empty()))
+        .mount(&server)
+        .await;
+
+    // Three works: one English, two with foreign-article prefixes.
+    Mock::given(method("GET"))
+        .and(path_regex(r"/authors/OL_LANG1A/works\.json"))
+        .and(query_param("offset", "0"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(works_body(&[
+            "Dune",
+            "Die Welt",
+            "El Camino",
+        ])))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    let result = follow::follow_add(&pool, &client, "Test Author", &server.uri(), Some("eng"))
+        .await
+        .unwrap();
+
+    // Only "Dune" passes — "Die Welt" and "El Camino" are filtered (foreign articles).
+    assert_eq!(
+        result,
+        follow::FollowAddResult::Added { works_queued: 1 },
+        "only the English-titled work must be queued"
+    );
+
+    let wants = db::list_want(&pool, None, None).await.unwrap();
+    assert_eq!(wants.len(), 1, "want list must contain exactly 1 entry");
+    assert_eq!(wants[0].title, "Dune", "only Dune must be in want list");
+}
+
+// ---------------------------------------------------------------------------
+// AC-13: follow_add does NOT filter when language=None
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_follow_add_no_filter_when_language_none() {
+    let (pool, _tmp) = temp_pool().await;
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search/authors\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            author_search_body("/authors/OL_LANG2A"),
+        ))
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/authors/OL_LANG2A/works\.json"))
+        .and(query_param("offset", "50"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(works_empty()))
+        .mount(&server)
+        .await;
+
+    // Same three works: one English, two with foreign-article prefixes.
+    Mock::given(method("GET"))
+        .and(path_regex(r"/authors/OL_LANG2A/works\.json"))
+        .and(query_param("offset", "0"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(works_body(&[
+            "Dune",
+            "Die Welt",
+            "El Camino",
+        ])))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    // language = None — no filter applied.
+    let result = follow::follow_add(&pool, &client, "Test Author 2", &server.uri(), None)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        result,
+        follow::FollowAddResult::Added { works_queued: 3 },
+        "all 3 works must be queued when language is None"
+    );
+
+    let wants = db::list_want(&pool, None, None).await.unwrap();
+    assert_eq!(wants.len(), 3, "want list must contain all 3 entries");
+    let titles: Vec<&str> = wants.iter().map(|w| w.title.as_str()).collect();
+    assert!(titles.contains(&"Dune"));
+    assert!(titles.contains(&"Die Welt"));
+    assert!(titles.contains(&"El Camino"));
+}
+
+// ---------------------------------------------------------------------------
+// AC-13 (continued): follow_add does NOT filter when language=Some("fre")
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_follow_add_no_filter_when_language_fre() {
+    let (pool, _tmp) = temp_pool().await;
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search/authors\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            author_search_body("/authors/OL_LANG_FRE"),
+        ))
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/authors/OL_LANG_FRE/works\.json"))
+        .and(query_param("offset", "50"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(works_empty()))
+        .mount(&server)
+        .await;
+
+    // Same three works: one English, two with foreign-article prefixes.
+    Mock::given(method("GET"))
+        .and(path_regex(r"/authors/OL_LANG_FRE/works\.json"))
+        .and(query_param("offset", "0"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(works_body(&[
+            "Dune",
+            "Die Welt",
+            "El Camino",
+        ])))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    // language = Some("fre") — non-eng, so no filter applied.
+    let result = follow::follow_add(&pool, &client, "Test Author Fre", &server.uri(), Some("fre"))
+        .await
+        .unwrap();
+
+    assert_eq!(
+        result,
+        follow::FollowAddResult::Added { works_queued: 3 },
+        "all 3 works must be queued when language is Some(\"fre\")"
+    );
+
+    let wants = db::list_want(&pool, None, None).await.unwrap();
+    assert_eq!(wants.len(), 3, "want list must contain all 3 entries");
+    let titles: Vec<&str> = wants.iter().map(|w| w.title.as_str()).collect();
+    assert!(titles.contains(&"Dune"));
+    assert!(titles.contains(&"Die Welt"));
+    assert!(titles.contains(&"El Camino"));
+}
+
+// ---------------------------------------------------------------------------
+// AC-14: follow_add still inserts author row when all works are filtered out
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_follow_add_all_filtered_author_row_present() {
+    let (pool, _tmp) = temp_pool().await;
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search/authors\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            author_search_body("/authors/OL_LANG3A"),
+        ))
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/authors/OL_LANG3A/works\.json"))
+        .and(query_param("offset", "50"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(works_empty()))
+        .mount(&server)
+        .await;
+
+    // All works start with foreign articles — all will be filtered.
+    Mock::given(method("GET"))
+        .and(path_regex(r"/authors/OL_LANG3A/works\.json"))
+        .and(query_param("offset", "0"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(works_body(&[
+            "Die Traumdeutung",
+            "El Quijote",
+            "Les Misérables",
+        ])))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    let result =
+        follow::follow_add(&pool, &client, "All Filtered Author", &server.uri(), Some("eng"))
+            .await
+            .unwrap();
+
+    // All 3 titles are filtered: works_queued == 0, but result is Added (not AuthorNotFound).
+    assert_eq!(
+        result,
+        follow::FollowAddResult::Added { works_queued: 0 },
+        "follow_add must return Added{{works_queued: 0}} when all works are filtered"
+    );
+
+    // Author row must be present in followed_authors.
+    let row = db::find_followed_author_by_name(&pool, "All Filtered Author")
+        .await
+        .unwrap();
+    assert!(
+        row.is_some(),
+        "author row must be inserted even when all works are filtered"
+    );
+
+    // No want entries.
+    let wants = db::list_want(&pool, None, None).await.unwrap();
+    assert!(wants.is_empty(), "want list must be empty when all works are filtered");
 }

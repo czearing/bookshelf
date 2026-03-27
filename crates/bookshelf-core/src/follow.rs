@@ -1,7 +1,21 @@
-use crate::{db, want};
+use crate::{db, series, want};
 use anyhow::Context;
 use chrono::Utc;
 use serde::Deserialize;
+
+// ---------------------------------------------------------------------------
+// Foreign-article prefix filter (AC-11/13)
+// ---------------------------------------------------------------------------
+
+const FOREIGN_ARTICLES: &[&str] = &[
+    "Das ", "Der ", "Die ", "Den ", "Det ", "De ", "Het ",
+    "El ", "La ", "Los ", "Las ", "Le ", "Les ", "Un ", "Una ", "Uno ",
+    "Il ", "Gli ", "I ", "O ", "Os ", "As ",
+];
+
+fn is_foreign_article_title(title: &str) -> bool {
+    FOREIGN_ARTICLES.iter().any(|prefix| title.starts_with(prefix))
+}
 
 // ---------------------------------------------------------------------------
 // OL deserialization structs
@@ -30,7 +44,7 @@ struct OlAuthorWork {
 }
 
 // ---------------------------------------------------------------------------
-// Public result type
+// Public result types
 // ---------------------------------------------------------------------------
 
 /// Result of a `follow_add` call.
@@ -39,6 +53,20 @@ pub enum FollowAddResult {
     Added { works_queued: usize },
     AlreadyFollowed,
     AuthorNotFound,
+}
+
+/// Per-author result from `sync_authors_detailed`.
+#[derive(Debug)]
+pub struct AuthorSyncResult {
+    pub name: String,
+    pub works_queued: usize,
+}
+
+/// Outcome of a full `sync_authors_detailed` run.
+#[derive(Debug)]
+pub struct AuthorsSyncOutcome {
+    pub results: Vec<AuthorSyncResult>,
+    pub had_error: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -52,6 +80,7 @@ pub async fn follow_add(
     client: &reqwest::Client,
     author_name: &str,
     base_url: &str,
+    language: Option<&str>,
 ) -> anyhow::Result<FollowAddResult> {
     // AC-11: already followed?
     if db::find_followed_author_by_name(pool, author_name).await?.is_some() {
@@ -89,7 +118,7 @@ pub async fn follow_add(
     db::insert_followed_author(pool, author_name, Some(&ol_key)).await?;
 
     // Fetch works and queue them.
-    let queued = fetch_and_queue_author_works(pool, client, author_name, &ol_key, base_url).await?;
+    let queued = fetch_and_queue_author_works(pool, client, author_name, &ol_key, base_url, language).await?;
 
     if queued == 0 {
         eprintln!("Author found but no works in catalog yet.");
@@ -116,6 +145,7 @@ pub async fn follow_sync(
     pool: &db::DbPool,
     client: &reqwest::Client,
     base_url: &str,
+    language: Option<&str>,
 ) -> anyhow::Result<usize> {
     let authors = db::list_followed_authors(pool).await?;
 
@@ -152,7 +182,7 @@ pub async fn follow_sync(
             }
         };
 
-        match fetch_and_queue_author_works(pool, client, &row.name, &ol_key, base_url).await {
+        match fetch_and_queue_author_works(pool, client, &row.name, &ol_key, base_url, language).await {
             Ok(_) => {
                 let now = Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
                 if let Err(e) =
@@ -174,6 +204,85 @@ pub async fn follow_sync(
     } else {
         Ok(synced)
     }
+}
+
+/// Re-sync all followed authors and return per-author work counts.
+/// Never returns `Err` for per-author OL failures — those are recorded in
+/// `AuthorsSyncOutcome::had_error`. Only returns `Err` for DB-level failures.
+pub async fn sync_authors_detailed(
+    pool: &db::DbPool,
+    client: &reqwest::Client,
+    base_url: &str,
+    language: Option<&str>,
+) -> anyhow::Result<AuthorsSyncOutcome> {
+    let authors = db::list_followed_authors(pool).await?;
+
+    if authors.is_empty() {
+        return Ok(AuthorsSyncOutcome {
+            results: vec![],
+            had_error: false,
+        });
+    }
+
+    let mut results = Vec::new();
+    let mut had_error = false;
+
+    for row in &authors {
+        let ol_key = match row.ol_key.clone() {
+            Some(k) => k,
+            None => {
+                match search_author_key(client, &row.name, base_url).await {
+                    Ok(Some(k)) => k,
+                    Ok(None) => {
+                        eprintln!(
+                            "WARNING: sync failed for '{}': author not found on OL",
+                            row.name
+                        );
+                        had_error = true;
+                        results.push(AuthorSyncResult {
+                            name: row.name.clone(),
+                            works_queued: 0,
+                        });
+                        continue;
+                    }
+                    Err(e) => {
+                        eprintln!("WARNING: sync failed for '{}': {e}", row.name);
+                        had_error = true;
+                        results.push(AuthorSyncResult {
+                            name: row.name.clone(),
+                            works_queued: 0,
+                        });
+                        continue;
+                    }
+                }
+            }
+        };
+
+        match fetch_and_queue_author_works(pool, client, &row.name, &ol_key, base_url, language).await {
+            Ok(works_queued) => {
+                let now = Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+                if let Err(e) =
+                    db::update_followed_author_synced(pool, &row.name, Some(&ol_key), &now).await
+                {
+                    eprintln!("WARNING: could not update last_synced for '{}': {e}", row.name);
+                }
+                results.push(AuthorSyncResult {
+                    name: row.name.clone(),
+                    works_queued,
+                });
+            }
+            Err(e) => {
+                eprintln!("WARNING: sync failed for '{}': {e}", row.name);
+                had_error = true;
+                results.push(AuthorSyncResult {
+                    name: row.name.clone(),
+                    works_queued: 0,
+                });
+            }
+        }
+    }
+
+    Ok(AuthorsSyncOutcome { results, had_error })
 }
 
 // ---------------------------------------------------------------------------
@@ -217,6 +326,7 @@ async fn fetch_and_queue_author_works(
     author_name: &str,
     ol_key: &str,
     base_url: &str,
+    language: Option<&str>,
 ) -> anyhow::Result<usize> {
     // Strip leading "/authors/" prefix if present.
     let bare_key = ol_key
@@ -258,6 +368,15 @@ async fn fetch_and_queue_author_works(
                 Some(t) => t,
                 None => continue,
             };
+
+            if series::is_noise_record(title, &[]) {
+                continue;
+            }
+
+            // AC-11/13: foreign-article prefix filter — only when language = "eng".
+            if language == Some("eng") && is_foreign_article_title(title) {
+                continue;
+            }
 
             if want::is_already_owned(pool, title, Some(author_name), None).await? {
                 continue;

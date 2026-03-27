@@ -1,7 +1,6 @@
 use crate::db::{self, DbPool};
 use crate::epub;
 use crate::fuzzy;
-use anyhow::Context;
 use std::path::Path;
 use walkdir::WalkDir;
 
@@ -16,6 +15,8 @@ pub struct ScanResult {
     pub skipped_non_epub: usize,
     /// Paths that produced parse or DB errors (warnings were printed).
     pub errors: Vec<String>,
+    /// IDs of newly inserted editions (for post-scan enrichment).
+    pub new_edition_ids: Vec<i64>,
 }
 
 /// Scan `dir` recursively for `.epub` files, parse OPF metadata,
@@ -24,7 +25,7 @@ pub struct ScanResult {
 /// Returns `Err` if `dir` does not exist or is not a directory (AC-6, AC-7).
 /// Individual file errors produce a warning on stderr and are collected in
 /// `ScanResult.errors`; scanning continues (AC-20, AC-21).
-pub async fn scan_directory(pool: &DbPool, dir: &Path) -> anyhow::Result<ScanResult> {
+pub async fn scan_directory(pool: &DbPool, dir: &Path, allowed_formats: &[&str]) -> anyhow::Result<ScanResult> {
     if !dir.exists() {
         return Err(anyhow::anyhow!(
             "path does not exist: {}",
@@ -56,26 +57,30 @@ pub async fn scan_directory(pool: &DbPool, dir: &Path) -> anyhow::Result<ScanRes
             .unwrap_or("")
             .to_lowercase();
 
-        if ext != "epub" {
+        if !allowed_formats.contains(&ext.as_str()) {
             result.skipped_non_epub += 1;
             continue;
         }
 
         result.scanned += 1;
 
-        // Parse EPUB metadata.
-        let meta = match epub::parse_epub(&path) {
-            Ok(m) => m,
-            Err(e) => {
-                eprintln!("WARNING: skipping {}: {e}", path.display());
-                result.errors.push(path.display().to_string());
-                continue;
+        // Parse metadata based on format.
+        let meta = if ext == "pdf" {
+            epub::meta_from_pdf_path(&path)
+        } else {
+            match epub::parse_epub(&path) {
+                Ok(m) => m,
+                Err(e) => {
+                    eprintln!("WARNING: skipping {}: {e}", path.display());
+                    result.errors.push(path.display().to_string());
+                    continue;
+                }
             }
         };
 
-        // Check whether this path is already in the DB before inserting.
-        let edition_id = match db::upsert_edition(pool, &meta).await {
-            Ok(id) => id,
+        // Insert if new; skip silently if already in DB at this path.
+        let (edition_id, was_inserted) = match db::upsert_edition(pool, &meta).await {
+            Ok(pair) => pair,
             Err(e) => {
                 eprintln!("WARNING: DB error for {}: {e}", path.display());
                 result.errors.push(path.display().to_string());
@@ -83,24 +88,14 @@ pub async fn scan_directory(pool: &DbPool, dir: &Path) -> anyhow::Result<ScanRes
             }
         };
 
-        // Detect whether this was a new insertion or an existing row.
-        // We count it as "inserted" when upsert_edition returns successfully
-        // but the edition has no work_id yet (i.e., it's genuinely new).
-        let existing =
-            db::get_edition(pool, edition_id)
-                .await
-                .context("get_edition after upsert")?;
-
-        if let Some(row) = existing {
-            if row.work_id.is_none() {
-                // Newly inserted (or existing but never work-linked).
-                result.inserted += 1;
-                if let Err(e) = link_work(pool, edition_id, &meta).await {
-                    eprintln!(
-                        "WARNING: work-linking failed for {}: {e}",
-                        path.display()
-                    );
-                }
+        if was_inserted {
+            result.inserted += 1;
+            result.new_edition_ids.push(edition_id);
+            if let Err(e) = link_work(pool, edition_id, &meta).await {
+                eprintln!(
+                    "WARNING: work-linking failed for {}: {e}",
+                    path.display()
+                );
             }
         }
     }
@@ -171,7 +166,7 @@ mod tests {
     #[tokio::test]
     async fn test_scan_nonexistent_dir_returns_err() {
         let (pool, _tmp) = open_temp_db().await;
-        let result = scan_directory(&pool, Path::new("/nonexistent/path/xyz")).await;
+        let result = scan_directory(&pool, Path::new("/nonexistent/path/xyz"), &["epub"]).await;
         assert!(result.is_err());
     }
 
@@ -179,7 +174,7 @@ mod tests {
     async fn test_scan_file_path_returns_err() {
         let (pool, _tmp) = open_temp_db().await;
         let tmp_file = tempfile::NamedTempFile::new().unwrap();
-        let result = scan_directory(&pool, tmp_file.path()).await;
+        let result = scan_directory(&pool, tmp_file.path(), &["epub"]).await;
         assert!(result.is_err());
     }
 
@@ -192,7 +187,7 @@ mod tests {
         std::fs::write(tmp_dir.path().join("book.pdf"), b"fake pdf").unwrap();
         std::fs::write(tmp_dir.path().join("cover.jpg"), b"fake jpg").unwrap();
 
-        let result = scan_directory(&pool, tmp_dir.path()).await.unwrap();
+        let result = scan_directory(&pool, tmp_dir.path(), &["epub"]).await.unwrap();
         assert_eq!(result.scanned, 0);
         assert_eq!(result.inserted, 0);
     }
@@ -213,7 +208,7 @@ mod tests {
         {
             std::os::unix::fs::symlink(tmp_dir.path(), &link_path).unwrap();
             // scan_directory must return Ok (not hang or panic) because follow_links(false).
-            let result = scan_directory(&pool, tmp_dir.path()).await;
+            let result = scan_directory(&pool, tmp_dir.path(), &["epub"]).await;
             assert!(result.is_ok(), "scan_directory must succeed despite symlink loop");
         }
 
@@ -223,13 +218,13 @@ mod tests {
             // Try to create it; if it fails for any privilege/OS reason, skip gracefully.
             match std::os::windows::fs::symlink_dir(tmp_dir.path(), &link_path) {
                 Ok(()) => {
-                    let result = scan_directory(&pool, tmp_dir.path()).await;
+                    let result = scan_directory(&pool, tmp_dir.path(), &["epub"]).await;
                     assert!(result.is_ok(), "scan_directory must succeed despite symlink loop");
                 }
                 Err(_) => {
                     // Not running as administrator or Developer Mode not enabled — skip.
                     // Still verify that a normal scan of an empty dir succeeds.
-                    let result = scan_directory(&pool, tmp_dir.path()).await;
+                    let result = scan_directory(&pool, tmp_dir.path(), &["epub"]).await;
                     assert!(result.is_ok());
                 }
             }
@@ -257,12 +252,12 @@ mod tests {
         std::fs::copy(epub.path(), &dest).unwrap();
 
         // First scan
-        let r1 = scan_directory(&pool, tmp_dir.path()).await.unwrap();
+        let r1 = scan_directory(&pool, tmp_dir.path(), &["epub"]).await.unwrap();
         assert_eq!(r1.scanned, 1);
         assert_eq!(r1.inserted, 1);
 
         // Second scan — must not duplicate
-        let r2 = scan_directory(&pool, tmp_dir.path()).await.unwrap();
+        let r2 = scan_directory(&pool, tmp_dir.path(), &["epub"]).await.unwrap();
         assert_eq!(r2.scanned, 1);
         let editions = db::list_editions(&pool).await.unwrap();
         assert_eq!(editions.len(), 1);

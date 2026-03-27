@@ -21,7 +21,7 @@ async fn insert_owned_edition(pool: &db::DbPool, title: &str, authors: &str, isb
         source_path: source_path.to_string(),
         ..Default::default()
     };
-    db::upsert_edition(pool, &meta).await.unwrap()
+    db::upsert_edition(pool, &meta).await.unwrap().0
 }
 
 async fn insert_want(pool: &db::DbPool, title: &str, author: Option<&str>, isbn13: Option<&str>, priority: i64) -> i64 {
@@ -69,7 +69,7 @@ async fn test_grab_work_level_match_owned() {
         source_path: "/tmp/dune_isbn.epub".to_string(),
         ..Default::default()
     };
-    let ed_isbn = db::upsert_edition(&pool, &meta_isbn).await.unwrap();
+    let ed_isbn = db::upsert_edition(&pool, &meta_isbn).await.unwrap().0;
     db::set_edition_work_id(&pool, ed_isbn, work_id).await.unwrap();
 
     let meta_owned = EpubMeta {
@@ -78,7 +78,7 @@ async fn test_grab_work_level_match_owned() {
         source_path: "/tmp/dune_alt.epub".to_string(),
         ..Default::default()
     };
-    let ed_owned = db::upsert_edition(&pool, &meta_owned).await.unwrap();
+    let ed_owned = db::upsert_edition(&pool, &meta_owned).await.unwrap().0;
     db::set_edition_work_id(&pool, ed_owned, work_id).await.unwrap();
 
     // Want row with the ISBN that links to the work.
@@ -162,6 +162,7 @@ async fn test_grab_sort_order() {
 
 fn sample_grab_entry(title: &str, author: Option<&str>, isbn13: Option<&str>) -> grab::GrabEntry {
     grab::GrabEntry {
+        id: 0,
         title: Some(title.to_string()),
         author: author.map(|s| s.to_string()),
         isbn13: isbn13.map(|s| s.to_string()),
@@ -221,6 +222,7 @@ async fn test_grab_csv_empty_list_has_only_header() {
 #[tokio::test]
 async fn test_grab_csv_rfc4180_quoting() {
     let entry = grab::GrabEntry {
+        id: 0,
         title: Some("Title, with comma".to_string()),
         author: Some("Author \"Nickname\" Name".to_string()),
         isbn13: None,
@@ -270,7 +272,7 @@ async fn test_grab_work_level_match_after_enrichment_merge() {
         source_path: "/tmp/dune_a.epub".to_string(),
         ..Default::default()
     };
-    let ed_a = db::upsert_edition(&pool, &meta_a).await.unwrap();
+    let ed_a = db::upsert_edition(&pool, &meta_a).await.unwrap().0;
 
     // Edition B: not owned (owned defaults to 0 after upsert — we just don't mark it).
     // In the test DB, editions from upsert_edition are owned=1 by default because
@@ -328,6 +330,7 @@ async fn test_grab_work_level_match_after_enrichment_merge() {
 #[tokio::test]
 async fn test_grab_csv_output_quotes_comma_title() {
     let entry = grab::GrabEntry {
+        id: 0,
         title: Some("The Comma, A Story".to_string()),
         author: None,
         isbn13: None,
@@ -346,6 +349,7 @@ async fn test_grab_csv_output_quotes_comma_title() {
 #[tokio::test]
 async fn test_grab_csv_output_escapes_internal_quotes() {
     let entry = grab::GrabEntry {
+        id: 0,
         title: Some("The \"Great\" Escape".to_string()),
         author: None,
         isbn13: None,
@@ -359,4 +363,260 @@ async fn test_grab_csv_output_escapes_internal_quotes() {
         csv.contains("\"The \"\"Great\"\" Escape\""),
         "double-quotes in title must be escaped as \"\"\"\": {csv}"
     );
+}
+
+// ---------------------------------------------------------------------------
+// GAP-05: True AC-41c scenario — want entry ISBN matches a NON-owned edition
+// that shares a work_id with an OWNED edition (different ISBN).
+// The prior bug searched only owned_editions for the ISBN match, so this case
+// was never caught and the entry incorrectly appeared in the grab list.
+// ---------------------------------------------------------------------------
+
+/// Want entry has ISBN_B.  No owned edition has ISBN_B directly.
+/// But an unowned DB edition has ISBN_B and shares a work_id with an owned edition
+/// that has ISBN_A.  The want entry must NOT appear in the grab list.
+#[tokio::test]
+async fn test_grab_ac41c_true_cross_isbn_work_match() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Create a shared work.
+    let work_id = db::insert_work(&pool, "Dune", "Frank Herbert").await.unwrap();
+
+    // Edition A: OWNED, ISBN_A, same work.
+    let meta_a = EpubMeta {
+        title: Some("Dune".to_string()),
+        authors: Some("Frank Herbert".to_string()),
+        isbn: Some("9780441013593".to_string()),
+        source_path: "/tmp/dune_owned.epub".to_string(),
+        ..Default::default()
+    };
+    let ed_a = db::upsert_edition(&pool, &meta_a).await.unwrap().0;
+    db::set_edition_work_id(&pool, ed_a, work_id).await.unwrap();
+
+    // Edition B: NOT OWNED, ISBN_B (different ISBN), same work.
+    // Inserted with owned=0 directly.
+    sqlx::query(
+        "INSERT INTO editions (title, authors, isbn, source_path, owned) VALUES (?, ?, ?, ?, 0)",
+    )
+    .bind("Dune (UK edition)")
+    .bind("Frank Herbert")
+    .bind("9780340960196")
+    .bind("/tmp/dune_unowned_uk.epub")
+    .execute(&pool)
+    .await
+    .unwrap();
+    let ed_b_row = sqlx::query("SELECT id FROM editions WHERE source_path = '/tmp/dune_unowned_uk.epub'")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let ed_b: i64 = ed_b_row.try_get("id").unwrap();
+    db::set_edition_work_id(&pool, ed_b, work_id).await.unwrap();
+
+    // Want entry with ISBN_B (the unowned edition's ISBN) and NULL author
+    // so that AC-41b (fuzzy) is skipped and only AC-41c can save it.
+    db::insert_want(&pool, "Dune", None, Some("9780340960196"), "manual", None, 5, None)
+        .await
+        .unwrap();
+
+    let grab = grab::compute_grab_list(&pool, None).await.unwrap();
+    assert!(
+        grab.is_empty(),
+        "want entry must NOT appear in grab list: work is already owned via a different ISBN edition; got {:?}",
+        grab.iter().map(|e| &e.isbn13).collect::<Vec<_>>()
+    );
+}
+
+/// Inverse test: want entry with an ISBN that belongs to a non-owned edition
+/// whose work_id is NOT shared with any owned edition must appear in the grab list.
+#[tokio::test]
+async fn test_grab_ac41c_unowned_work_appears_in_list() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Create a work with only a non-owned edition.
+    let work_id = db::insert_work(&pool, "Foundation", "Isaac Asimov").await.unwrap();
+    sqlx::query(
+        "INSERT INTO editions (title, authors, isbn, source_path, owned) VALUES (?, ?, ?, ?, 0)",
+    )
+    .bind("Foundation")
+    .bind("Isaac Asimov")
+    .bind("9780553293357")
+    .bind("/tmp/foundation_unowned.epub")
+    .execute(&pool)
+    .await
+    .unwrap();
+    let ed_row = sqlx::query("SELECT id FROM editions WHERE source_path = '/tmp/foundation_unowned.epub'")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let ed_id: i64 = ed_row.try_get("id").unwrap();
+    db::set_edition_work_id(&pool, ed_id, work_id).await.unwrap();
+
+    // Want entry with the same ISBN (unowned edition) — must appear in grab list.
+    db::insert_want(&pool, "Foundation", None, Some("9780553293357"), "manual", None, 5, None)
+        .await
+        .unwrap();
+
+    let grab = grab::compute_grab_list(&pool, None).await.unwrap();
+    assert_eq!(
+        grab.len(),
+        1,
+        "want entry must appear in grab list when no owned edition shares the work_id"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// GAP-15: min_priority boundary values (0 and 11)
+// ---------------------------------------------------------------------------
+
+/// min_priority = 0 should return all entries (all priorities are >= 1).
+#[tokio::test]
+async fn test_grab_min_priority_zero_returns_all() {
+    let (pool, _tmp) = temp_pool().await;
+    db::insert_want(&pool, "Book1", None, None, "manual", None, 1, None).await.unwrap();
+    db::insert_want(&pool, "Book10", None, None, "manual", None, 10, None).await.unwrap();
+
+    let grab = grab::compute_grab_list(&pool, Some(0)).await.unwrap();
+    assert_eq!(grab.len(), 2, "min_priority=0 must include all entries (all priorities >= 1)");
+}
+
+/// min_priority = 11 should return an empty list (no priority can be >= 11).
+#[tokio::test]
+async fn test_grab_min_priority_eleven_returns_empty() {
+    let (pool, _tmp) = temp_pool().await;
+    db::insert_want(&pool, "Book1", None, None, "manual", None, 1, None).await.unwrap();
+    db::insert_want(&pool, "Book10", None, None, "manual", None, 10, None).await.unwrap();
+
+    let grab = grab::compute_grab_list(&pool, Some(11)).await.unwrap();
+    assert!(grab.is_empty(), "min_priority=11 must produce empty grab list");
+}
+
+// ---------------------------------------------------------------------------
+// GAP-06: library_stats.grab_count diverges from compute_grab_list result
+// ---------------------------------------------------------------------------
+
+/// Documents the known divergence between library_stats.grab_count (ISBN-only
+/// matching) and compute_grab_list (which also applies fuzzy matching).
+///
+/// Setup: one owned edition and one want entry, both title="Dune" / author=
+/// "Frank Herbert", no ISBN on either.  compute_grab_list returns 0 (fuzzy
+/// match suppresses it).  library_stats.grab_count returns 1 (ISBN-only — no
+/// ISBN present so the entry is not suppressed).
+#[tokio::test]
+async fn test_grab_count_diverges_from_compute_grab_list() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Owned edition — no ISBN.
+    insert_owned_edition(&pool, "Dune", "Frank Herbert", None, "/tmp/dune_gap06.epub").await;
+
+    // Want entry — same title/author, no ISBN.
+    insert_want(&pool, "Dune", Some("Frank Herbert"), None, 5).await;
+
+    // compute_grab_list uses fuzzy matching: the owned edition matches → 0 results.
+    let grab = grab::compute_grab_list(&pool, None).await.unwrap();
+    assert_eq!(
+        grab.len(),
+        0,
+        "compute_grab_list must return 0 entries when fuzzy match suppresses the want entry"
+    );
+
+    // library_stats.grab_count is ISBN-only: no ISBN match → counts 1.
+    let stats = db::library_stats(&pool).await.unwrap();
+    assert_eq!(
+        stats.grab_count,
+        1,
+        "library_stats.grab_count must be 1 (ISBN-only, no fuzzy) even though compute_grab_list returns 0"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// GAP-23: library_stats numeric accuracy
+// ---------------------------------------------------------------------------
+
+/// Insert a known set of editions and want entries and assert exact values for
+/// every field of LibraryStats.
+#[tokio::test]
+async fn test_library_stats_numeric_accuracy() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // 3 owned editions: 2 with ISBN, 1 without.
+    let meta1 = EpubMeta {
+        title: Some("Stats Book A".to_string()),
+        authors: Some("Author Stats".to_string()),
+        isbn: Some("9780000001001".to_string()),
+        source_path: "/tmp/gap23_a.epub".to_string(),
+        series_name: Some("Stats Series".to_string()),
+        ..Default::default()
+    };
+    let id1 = db::upsert_edition(&pool, &meta1).await.unwrap().0;
+
+    // Mark edition 1 as enriched.
+    db::apply_enrichment(
+        &pool,
+        id1,
+        &db::EnrichmentUpdate {
+            enriched_at: Some("2026-01-01T00:00:00Z".to_string()),
+            enrichment_attempted: 1,
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    let meta2 = EpubMeta {
+        title: Some("Stats Book B".to_string()),
+        authors: Some("Author Stats".to_string()),
+        isbn: Some("9780000001002".to_string()),
+        source_path: "/tmp/gap23_b.epub".to_string(),
+        ..Default::default()
+    };
+    db::upsert_edition(&pool, &meta2).await.unwrap();
+
+    let meta3 = EpubMeta {
+        title: Some("Stats Book C No ISBN".to_string()),
+        authors: Some("Author Stats".to_string()),
+        source_path: "/tmp/gap23_c.epub".to_string(),
+        ..Default::default()
+    };
+    db::upsert_edition(&pool, &meta3).await.unwrap();
+
+    // 2 want entries: 1 from "goodreads_csv", 1 from "author_follow", both with isbn13.
+    db::insert_want(
+        &pool,
+        "Want GAP23 A",
+        Some("Want Author"),
+        Some("9780000002001"),
+        "goodreads_csv",
+        None,
+        5,
+        None,
+    )
+    .await
+    .unwrap();
+    db::insert_want(
+        &pool,
+        "Want GAP23 B",
+        Some("Want Author"),
+        Some("9780000002002"),
+        "author_follow",
+        None,
+        5,
+        None,
+    )
+    .await
+    .unwrap();
+
+    let stats = db::library_stats(&pool).await.unwrap();
+
+    assert_eq!(stats.books_in_library, 3, "books_in_library must be 3");
+    assert_eq!(stats.with_isbn, 2, "with_isbn must be 2");
+    assert_eq!(stats.in_a_series, 1, "in_a_series must be 1");
+    assert_eq!(stats.enriched, 1, "enriched must be 1");
+    assert_eq!(stats.want_total, 2, "want_total must be 2");
+    assert_eq!(stats.want_with_isbn, 2, "want_with_isbn must be 2");
+    assert_eq!(stats.want_by_goodreads_csv, 1, "want_by_goodreads_csv must be 1");
+    assert_eq!(stats.want_by_author_follow, 1, "want_by_author_follow must be 1");
+    assert_eq!(stats.want_by_manual, 0, "want_by_manual must be 0");
+    assert_eq!(stats.want_by_openlibrary, 0, "want_by_openlibrary must be 0");
+    assert_eq!(stats.want_by_text_file, 0, "want_by_text_file must be 0");
+    assert_eq!(stats.want_by_series_fill, 0, "want_by_series_fill must be 0");
 }

@@ -14,11 +14,15 @@ zip        = "0.6"
 strsim     = "0.11"
 chrono     = { version = "0.4", features = ["serde"] }
 anyhow     = "1"
+async-trait = "0.1"
 dirs       = "5"
 tracing    = "0.1"
 walkdir      = "2"
 urlencoding  = "2"
 csv          = "1"
+tempfile     = "3"
+toml         = "0.8"
+futures      = "0.3"
 
 [dev-dependencies]
 tokio            = { version = "1", features = ["full"] }

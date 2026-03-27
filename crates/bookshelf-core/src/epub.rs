@@ -1,4 +1,5 @@
 use crate::fuzzy::normalize_isbn;
+use crate::native_path_str;
 use anyhow::{anyhow, Context};
 use quick_xml::events::Event;
 use quick_xml::Reader;
@@ -70,12 +71,132 @@ pub fn parse_epub(path: &Path) -> anyhow::Result<EpubMeta> {
 
     // Step 3: parse OPF XML.
     let mut meta = parse_opf(&opf_content)?;
-    meta.source_path = path
-        .canonicalize()
-        .unwrap_or_else(|_| path.to_path_buf())
-        .to_string_lossy()
-        .to_string();
+    // Use the path as-is (made absolute if relative) without calling
+    // canonicalize().  On Windows, canonicalize() resolves the user's login
+    // name (e.g. "CaLebWork") to the display name (e.g. "Caleb's Work") via
+    // GetFinalPathNameByHandle, which produces a different string than what
+    // `organize` and the config store, causing false duplicate detections on
+    // re-scan.
+    let abs_path = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .unwrap_or_else(|_| std::path::PathBuf::from("."))
+            .join(path)
+    };
+    meta.source_path = native_path_str(&abs_path);
     Ok(meta)
+}
+
+/// Extract a PDF Info dictionary string value for `key` (e.g. "Title", "Author").
+///
+/// Scans up to the first 64 KB of the PDF binary for patterns like:
+///   `/Title (some text)` or `/Title <FEFF…>` (UTF-16BE hex string)
+///
+/// Returns `None` if the key is absent or unreadable.
+fn pdf_info_value(bytes: &[u8], key: &str) -> Option<String> {
+    let needle = format!("/{key} (");
+    let pos = bytes
+        .windows(needle.len())
+        .position(|w| w == needle.as_bytes())?;
+    let after = &bytes[pos + needle.len()..];
+    // Read until the matching unescaped ')'.
+    let mut s = String::new();
+    let mut depth = 1usize;
+    let mut iter = after.iter().copied();
+    while let Some(b) = iter.next() {
+        match b {
+            b'\\' => {
+                // Consume the escaped byte and emit it literally.
+                if let Some(esc) = iter.next() {
+                    match esc {
+                        b'n' => s.push('\n'),
+                        b'r' => s.push('\r'),
+                        b't' => s.push('\t'),
+                        b'b' => s.push('\x08'),
+                        b'f' => s.push('\x0C'),
+                        other => s.push(other as char),
+                    }
+                }
+            }
+            b'(' => { depth += 1; s.push('('); }
+            b')' => {
+                depth -= 1;
+                if depth == 0 { break; }
+                s.push(')');
+            }
+            other => s.push(other as char),
+        }
+    }
+    let trimmed = s.trim().to_string();
+    if trimmed.is_empty() { None } else { Some(trimmed) }
+}
+
+/// Create minimal `EpubMeta` from a PDF file path.
+/// Used when scanning PDF files that have no embedded OPF metadata.
+///
+/// Tries to read the PDF's Info dictionary (Title / Author) first; falls back
+/// to deriving a title by converting the filename stem to title-case words.
+pub fn meta_from_pdf_path(path: &Path) -> EpubMeta {
+    // Read up to the first 64 KB — Info dict is almost always near the end but
+    // also written early in linearised PDFs; scanning the trailer area is more
+    // reliable but 64 KB covers the vast majority of real files.
+    let pdf_meta: (Option<String>, Option<String>) = std::fs::File::open(path)
+        .ok()
+        .and_then(|mut f| {
+            use std::io::Read;
+            // Read the last 64 KB where the xref/Info dict usually lives.
+            let file_len = f.metadata().ok()?.len() as usize;
+            let read_from = file_len.saturating_sub(65536);
+            if read_from > 0 {
+                use std::io::Seek;
+                f.seek(std::io::SeekFrom::Start(read_from as u64)).ok()?;
+            }
+            let mut buf = Vec::new();
+            f.read_to_end(&mut buf).ok()?;
+            Some(buf)
+        })
+        .map(|buf| {
+            let title = pdf_info_value(&buf, "Title");
+            let author = pdf_info_value(&buf, "Author");
+            (title, author)
+        })
+        .unwrap_or((None, None));
+
+    let (pdf_title, pdf_author) = pdf_meta;
+
+    // Fallback title from filename stem when PDF has none.
+    let filename_title: String = {
+        let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+        let raw = stem.replace(['-', '_'], " ");
+        raw.split_whitespace()
+            .map(|w| {
+                let mut c = w.chars();
+                match c.next() {
+                    None => String::new(),
+                    Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+
+    let abs_path = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .unwrap_or_else(|_| std::path::PathBuf::from("."))
+            .join(path)
+    };
+
+    let title = pdf_title.or_else(|| if filename_title.is_empty() { None } else { Some(filename_title) });
+
+    EpubMeta {
+        title,
+        authors: pdf_author,
+        source_path: abs_path.to_string_lossy().to_string(),
+        ..Default::default()
+    }
 }
 
 /// Extract the OPF file path from `META-INF/container.xml` content.
@@ -269,11 +390,15 @@ fn parse_opf(xml: &str) -> anyhow::Result<EpubMeta> {
                         meta.description = Some(text);
                     }
                     Some(b"dc:identifier") => {
-                        if (current_id_is_isbn || looks_like_isbn(&text))
-                            && meta.isbn.is_none()
-                        {
-                            // Issue 1: normalize before storing (strip hyphens/spaces).
-                            meta.isbn = Some(normalize_isbn(&text));
+                        if meta.isbn.is_none() {
+                            // Strip standard ISBN URI prefixes (urn:isbn:, isbn:) before
+                            // digit-counting so "urn:isbn:9780306406157" is handled
+                            // correctly while "urn:uuid:1234567890123" is still rejected.
+                            let candidate = strip_isbn_uri_prefix(&text);
+                            if current_id_is_isbn || looks_like_isbn(candidate) {
+                                // Issue 1: normalize before storing (strip hyphens/spaces).
+                                meta.isbn = Some(normalize_isbn(candidate));
+                            }
                         }
                     }
                     Some(b"__belongs_to_collection") => {
@@ -304,7 +429,11 @@ fn parse_opf(xml: &str) -> anyhow::Result<EpubMeta> {
     }
 
     if !authors.is_empty() {
-        meta.authors = Some(authors.join(", "));
+        let normalized: Vec<String> = authors
+            .iter()
+            .map(|a| crate::author::normalize_author(a))
+            .collect();
+        meta.authors = Some(normalized.join(", "));
     }
 
     Ok(meta)
@@ -338,8 +467,33 @@ pub fn xml_escape(s: &str) -> String {
         .replace('\'', "&apos;")
 }
 
-/// Heuristic: does a string look like an ISBN (10 or 13 digits, possibly hyphenated)?
+/// Strip a standard ISBN URI prefix from a dc:identifier value.
+///
+/// Recognises `urn:isbn:` and `isbn:` (case-insensitive).  Returns a slice
+/// into the original string starting after the prefix, or the original string
+/// unchanged if no recognised prefix is present.
+fn strip_isbn_uri_prefix(s: &str) -> &str {
+    let lower = s.to_ascii_lowercase();
+    for prefix in &["urn:isbn:", "isbn:"] {
+        if lower.starts_with(prefix) {
+            return &s[prefix.len()..];
+        }
+    }
+    s
+}
+
+/// Heuristic: does a string look like a formatted ISBN (10 or 13 digits,
+/// optionally separated by hyphens or spaces)?
+///
+/// Rejects strings that contain any character outside the valid ISBN character
+/// set (digits, hyphens, spaces, and X), which prevents UUID-style identifiers
+/// with exactly 13 embedded digits (e.g. `"urn:uuid:1234567890123"`) from
+/// being misidentified as ISBNs (GAP-16 fix).  Call `strip_isbn_uri_prefix`
+/// first to handle `urn:isbn:…` forms before calling this function.
 fn looks_like_isbn(s: &str) -> bool {
+    if !s.chars().all(|c| c.is_ascii_digit() || c == '-' || c == ' ' || c == 'X' || c == 'x') {
+        return false;
+    }
     let digits: String = s.chars().filter(|c| c.is_ascii_digit()).collect();
     digits.len() == 10 || digits.len() == 13
 }
@@ -592,5 +746,20 @@ pub mod tests {
         assert!(looks_like_isbn("0261102214"));
         assert!(!looks_like_isbn("123"));
         assert!(!looks_like_isbn("not-an-isbn"));
+    }
+
+    // GAP-16: UUIDs with exactly 13 digits must NOT be treated as ISBNs.
+    #[test]
+    fn test_looks_like_isbn_rejects_uuid_with_13_digits() {
+        // UUID-style identifiers that happen to have 13 digits — must be rejected.
+        assert!(!looks_like_isbn("urn:uuid:1234567890123"), "UUID must not pass looks_like_isbn");
+        assert!(!looks_like_isbn("urn:uuid:9780261102217"), "UUID-wrapped ISBN must not pass looks_like_isbn");
+        assert!(!looks_like_isbn("uuid:1234567890123"), "uri-prefixed UUID must not pass");
+        // Pure digits-only string with 13 chars IS a valid ISBN candidate.
+        assert!(looks_like_isbn("9780261102217"), "bare 13-digit string must still pass");
+        // Formatted ISBN with hyphens must still pass.
+        assert!(looks_like_isbn("978-0-26-110221-7"), "hyphen-formatted ISBN-13 must pass");
+        // Non-digit separator chars (slash, colon) must be rejected.
+        assert!(!looks_like_isbn("978/026/110221/7"), "slash-separated string must not pass");
     }
 }

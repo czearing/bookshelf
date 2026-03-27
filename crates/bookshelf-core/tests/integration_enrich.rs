@@ -26,7 +26,7 @@ async fn insert_test_edition(pool: &db::DbPool, isbn: &str, path: &str) -> i64 {
         source_path: path.to_string(),
         ..Default::default()
     };
-    db::upsert_edition(pool, &meta).await.unwrap()
+    db::upsert_edition(pool, &meta).await.unwrap().0
 }
 
 // ---------------------------------------------------------------------------
@@ -266,7 +266,7 @@ async fn test_discovered_isbn_is_persisted_to_db() {
         source_path: "/tmp/hobbit_no_isbn.epub".to_string(),
         ..Default::default()
     };
-    let edition_id = db::upsert_edition(&pool, &meta).await.unwrap();
+    let edition_id = db::upsert_edition(&pool, &meta).await.unwrap().0;
 
     // Verify no ISBN is set initially
     let row_before = db::get_edition(&pool, edition_id).await.unwrap().unwrap();
@@ -374,4 +374,156 @@ async fn test_update_work_ol_id_merges_editions() {
         Some(surviving_work_id),
         "works table must contain exactly one row with the OL work ID"
     );
+}
+
+// ---------------------------------------------------------------------------
+// enrich_from_search: returns series and language from search.json
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_enrich_from_search_returns_series_and_language() {
+    let server = MockServer::start().await;
+
+    let search_body = serde_json::json!({
+        "docs": [{
+            "title": "The Fellowship of the Ring",
+            "author_name": ["J.R.R. Tolkien"],
+            "language": ["eng"],
+            "series": ["The Lord of the Rings"],
+            "series_number": "1"
+        }]
+    });
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(search_body))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    let result = enrich::enrich_from_search(
+        &client,
+        "The Fellowship of the Ring",
+        "Tolkien",
+        &server.uri(),
+    )
+    .await;
+
+    assert!(result.is_ok(), "enrich_from_search should succeed: {:?}", result);
+    let update = result.unwrap().expect("should return an update");
+
+    assert_eq!(update.title.as_deref(), Some("The Fellowship of the Ring"));
+    assert_eq!(update.series_name.as_deref(), Some("The Lord of the Rings"));
+    assert_eq!(update.series_position.as_deref(), Some("1"));
+    assert_eq!(update.language.as_deref(), Some("eng"));
+    assert_eq!(update.enrichment_attempted, 1);
+    assert!(update.enriched_at.is_some());
+}
+
+#[tokio::test]
+async fn test_enrich_from_search_normalizes_author_names() {
+    let server = MockServer::start().await;
+
+    let search_body = serde_json::json!({
+        "docs": [{
+            "title": "Good Omens",
+            "author_name": ["Pratchett, Terry", "Gaiman, Neil"],
+            "language": ["en"]
+        }]
+    });
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(search_body))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    let result = enrich::enrich_from_search(
+        &client,
+        "Good Omens",
+        "Pratchett",
+        &server.uri(),
+    )
+    .await
+    .unwrap()
+    .expect("should return an update");
+
+    // Authors should be normalized from "Lastname, Firstname" to "Firstname Lastname"
+    assert_eq!(
+        result.authors.as_deref(),
+        Some("Terry Pratchett, Neil Gaiman"),
+        "author names should be normalized to Firstname Lastname form"
+    );
+}
+
+#[tokio::test]
+async fn test_enrich_from_search_returns_none_on_empty_docs() {
+    let server = MockServer::start().await;
+
+    let search_body = serde_json::json!({ "docs": [] });
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(search_body))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    let result = enrich::enrich_from_search(
+        &client,
+        "A Book That Does Not Exist",
+        "Nobody",
+        &server.uri(),
+    )
+    .await;
+
+    assert!(result.is_ok());
+    assert!(result.unwrap().is_none(), "empty docs should return None");
+}
+
+#[tokio::test]
+async fn test_enrich_from_search_applies_to_db() {
+    let (pool, _db_tmp) = temp_pool().await;
+    let meta = bookshelf_core::epub::EpubMeta {
+        title: Some("Dune".to_string()),
+        authors: Some("Frank Herbert".to_string()),
+        isbn: Some("9780441013593".to_string()),
+        source_path: "/tmp/dune_series_test.epub".to_string(),
+        ..Default::default()
+    };
+    let edition_id = db::upsert_edition(&pool, &meta).await.unwrap().0;
+
+    let server = MockServer::start().await;
+
+    let search_body = serde_json::json!({
+        "docs": [{
+            "title": "Dune",
+            "author_name": ["Herbert, Frank"],
+            "language": ["eng"],
+            "series": ["Dune Chronicles"],
+            "series_number": "1"
+        }]
+    });
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(search_body))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    let update = enrich::enrich_from_search(&client, "Dune", "Herbert", &server.uri())
+        .await
+        .unwrap()
+        .expect("should return an update");
+
+    db::apply_enrichment(&pool, edition_id, &update).await.unwrap();
+
+    let row = db::get_edition(&pool, edition_id).await.unwrap().unwrap();
+    assert_eq!(row.series_name.as_deref(), Some("Dune Chronicles"));
+    assert_eq!(row.series_position.as_deref(), Some("1"));
+    assert_eq!(row.language.as_deref(), Some("eng"));
+    // Author should be normalized
+    assert_eq!(row.authors.as_deref(), Some("Frank Herbert"));
 }

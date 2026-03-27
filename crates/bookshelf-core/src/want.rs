@@ -14,7 +14,8 @@ use std::path::Path;
 pub struct ImportSummary {
     pub imported: usize,
     pub skipped_owned: usize,
-    pub skipped_rows: usize, // malformed/unparseable (CSV only)
+    pub skipped_rows: usize,        // malformed/unparseable (CSV only)
+    pub already_wanted: usize,      // already on want list (refreshed but not counted as new)
 }
 
 /// Result of a manual `want add` operation.
@@ -144,8 +145,13 @@ pub(crate) async fn find_existing_want(
 
     // 2. Fuzzy match (only when incoming author is Some).
     if let Some(a) = author {
-        let all = db::list_want(pool, None).await?;
+        let all = db::list_want(pool, None, None).await?;
         for row in all {
+            // If both sides have ISBNs and the ISBN check above didn't match,
+            // they are definitively different editions — skip fuzzy matching.
+            if isbn13.is_some() && row.isbn13.is_some() {
+                continue;
+            }
             if let Some(ref row_author) = row.author {
                 if fuzzy::is_same_work(title, a, &row.title, row_author) {
                     return Ok(Some(row));
@@ -154,7 +160,7 @@ pub(crate) async fn find_existing_want(
         }
     } else {
         // 3. Both incoming and existing have NULL author: exact case-insensitive title.
-        let all = db::list_want(pool, None).await?;
+        let all = db::list_want(pool, None, None).await?;
         for row in all {
             if row.author.is_none() && row.title.to_lowercase() == title.to_lowercase() {
                 return Ok(Some(row));
@@ -283,7 +289,7 @@ pub async fn import_goodreads_csv(
                 existing.notes.as_deref(),
             )
             .await?;
-            summary.imported += 1;
+            summary.already_wanted += 1;
         } else {
             db::insert_want(
                 pool,
@@ -300,10 +306,16 @@ pub async fn import_goodreads_csv(
         }
     }
 
-    println!(
-        "Imported {} books from Goodreads CSV. Skipped {} already owned.",
-        summary.imported, summary.skipped_owned
-    );
+    {
+        let mut parts = vec![format!("Imported {} new", summary.imported)];
+        if summary.already_wanted > 0 {
+            parts.push(format!("{} already on want list", summary.already_wanted));
+        }
+        if summary.skipped_owned > 0 {
+            parts.push(format!("{} already owned", summary.skipped_owned));
+        }
+        println!("Goodreads CSV: {}.", parts.join(", "));
+    }
 
     Ok(summary)
 }
@@ -443,7 +455,7 @@ pub async fn import_openlibrary(
                     existing.notes.as_deref(),
                 )
                 .await?;
-                summary.imported += 1;
+                summary.already_wanted += 1;
             } else {
                 db::insert_want(
                     pool,
@@ -478,10 +490,16 @@ pub async fn import_openlibrary(
         page += 1;
     }
 
-    println!(
-        "Imported {} books from OpenLibrary. Skipped {} already owned.",
-        summary.imported, summary.skipped_owned
-    );
+    {
+        let mut parts = vec![format!("Imported {} new", summary.imported)];
+        if summary.already_wanted > 0 {
+            parts.push(format!("{} already on want list", summary.already_wanted));
+        }
+        if summary.skipped_owned > 0 {
+            parts.push(format!("{} already owned", summary.skipped_owned));
+        }
+        println!("OpenLibrary: {}.", parts.join(", "));
+    }
 
     Ok(summary)
 }
@@ -528,7 +546,7 @@ pub async fn import_text_file(
                 existing.notes.as_deref(),
             )
             .await?;
-            summary.imported += 1;
+            summary.already_wanted += 1;
         } else {
             db::insert_want(
                 pool,
@@ -545,10 +563,16 @@ pub async fn import_text_file(
         }
     }
 
-    println!(
-        "Imported {} books from text file. Skipped {} already owned.",
-        summary.imported, summary.skipped_owned
-    );
+    {
+        let mut parts = vec![format!("Imported {} new", summary.imported)];
+        if summary.already_wanted > 0 {
+            parts.push(format!("{} already on want list", summary.already_wanted));
+        }
+        if summary.skipped_owned > 0 {
+            parts.push(format!("{} already owned", summary.skipped_owned));
+        }
+        println!("Text file: {}.", parts.join(", "));
+    }
 
     Ok(summary)
 }
@@ -660,7 +684,19 @@ pub async fn add_manual(
     }
 
     if let Some(existing) = find_existing_want(pool, title, author, isbn13).await? {
-        db::update_want(pool, existing.id, title, author, isbn13, None, priority, notes).await?;
+        // Preserve the existing source_id — manual add must not clobber it with NULL
+        // if the entry was originally imported from Goodreads/OL with a source_id (GAP-30).
+        db::update_want(
+            pool,
+            existing.id,
+            title,
+            author,
+            isbn13,
+            existing.source_id.as_deref(),
+            priority,
+            notes,
+        )
+        .await?;
         return Ok(AddResult::AlreadyInWantList);
     }
 
@@ -767,7 +803,7 @@ mod tests {
 
         remove_want(&pool, id).await.unwrap();
 
-        let all = db::list_want(&pool, None).await.unwrap();
+        let all = db::list_want(&pool, None, None).await.unwrap();
         assert!(
             !all.iter().any(|r| r.id == id),
             "removed entry must not appear in list_want"
@@ -936,11 +972,13 @@ mod tests {
     async fn test_import_openlibrary_pagination_two_pages() {
         let server = MockServer::start().await;
 
+        // Use distinctly different titles so the fuzzy matcher won't collapse them.
+        let titles = ["Foundation", "Dune", "Neuromancer", "Snow Crash", "Hyperion"];
         let make_entry = |i: usize| serde_json::json!({
             "work": {
-                "title": format!("Book {i}"),
+                "title": titles[i - 1],
                 "key": format!("/works/OL{i}W"),
-                "author_names": ["Author"]
+                "author_names": [format!("Author{i}")]
             }
         });
 
@@ -1014,7 +1052,7 @@ mod tests {
         let client = make_ol_client();
         let result = import_openlibrary(&pool, &client, "noauthor", &server.uri()).await;
         assert!(result.is_ok());
-        let all = db::list_want(&pool, None).await.unwrap();
+        let all = db::list_want(&pool, None, None).await.unwrap();
         assert_eq!(all.len(), 1);
         assert!(all[0].author.is_none(), "author must be NULL when author_names is empty");
     }
@@ -1043,7 +1081,7 @@ mod tests {
         let client = make_ol_client();
         let result = import_openlibrary(&pool, &client, "notitle", &server.uri()).await;
         assert!(result.is_ok());
-        let all = db::list_want(&pool, None).await.unwrap();
+        let all = db::list_want(&pool, None, None).await.unwrap();
         assert_eq!(all.len(), 0, "row with missing title must be skipped");
     }
 
@@ -1149,7 +1187,7 @@ mod tests {
         let result = import_text_file(&pool, tmp.path()).await.unwrap();
         assert_eq!(result.imported, 3, "3 valid lines must be imported");
 
-        let all = db::list_want(&pool, None).await.unwrap();
+        let all = db::list_want(&pool, None, None).await.unwrap();
         let titles: Vec<&str> = all.iter().map(|r| r.title.as_str()).collect();
         assert!(titles.contains(&"Dune"), "Dune must be imported");
         assert!(titles.contains(&"Foundation"), "Foundation must be imported");

@@ -158,7 +158,7 @@ async fn test_e2e_scan_fixture_epubs() {
         &epub_dir.path().join("fellowship.epub"),
     );
 
-    let result = scan::scan_directory(&pool, epub_dir.path()).await.unwrap();
+    let result = scan::scan_directory(&pool, epub_dir.path(), &["epub"]).await.unwrap();
     assert_eq!(result.scanned, 2, "should have scanned 2 epub files");
     assert_eq!(result.inserted, 2, "should have inserted 2 new books");
     assert_eq!(result.errors.len(), 0);
@@ -208,8 +208,8 @@ async fn test_rescan_no_duplicates() {
         &epub_dir.path().join("dune.epub"),
     );
 
-    scan::scan_directory(&pool, epub_dir.path()).await.unwrap();
-    scan::scan_directory(&pool, epub_dir.path()).await.unwrap();
+    scan::scan_directory(&pool, epub_dir.path(), &["epub"]).await.unwrap();
+    scan::scan_directory(&pool, epub_dir.path(), &["epub"]).await.unwrap();
 
     let editions = db::list_editions(&pool).await.unwrap();
     assert_eq!(editions.len(), 1, "second scan must not create duplicate rows");
@@ -253,7 +253,7 @@ async fn test_fuzzy_dedup_assigns_same_work_id() {
         &epub_dir.path().join("hobbit2.epub"),
     );
 
-    scan::scan_directory(&pool, epub_dir.path()).await.unwrap();
+    scan::scan_directory(&pool, epub_dir.path(), &["epub"]).await.unwrap();
 
     let editions = db::list_editions(&pool).await.unwrap();
     assert_eq!(editions.len(), 2, "should have 2 distinct edition rows");
@@ -282,7 +282,7 @@ async fn test_scan_ignores_non_epub_files() {
     std::fs::write(epub_dir.path().join("cover.jpg"), b"img").unwrap();
     std::fs::write(epub_dir.path().join("doc.pdf"), b"pdf").unwrap();
 
-    let result = scan::scan_directory(&pool, epub_dir.path()).await.unwrap();
+    let result = scan::scan_directory(&pool, epub_dir.path(), &["epub"]).await.unwrap();
     assert_eq!(result.scanned, 0);
     assert_eq!(result.inserted, 0);
     let editions = db::list_editions(&pool).await.unwrap();
@@ -316,7 +316,7 @@ async fn test_scan_discovers_deeply_nested_epub() {
         &nested.join("deep.epub"),
     );
 
-    let result = scan::scan_directory(&pool, epub_dir.path()).await.unwrap();
+    let result = scan::scan_directory(&pool, epub_dir.path(), &["epub"]).await.unwrap();
     assert_eq!(result.scanned, 1);
     assert_eq!(result.inserted, 1);
 }
@@ -358,7 +358,7 @@ async fn test_same_isbn_editions_share_work_id() {
         &epub_dir.path().join("hobbit_b.epub"),
     );
 
-    scan::scan_directory(&pool, epub_dir.path()).await.unwrap();
+    scan::scan_directory(&pool, epub_dir.path(), &["epub"]).await.unwrap();
 
     let editions = db::list_editions(&pool).await.unwrap();
     assert_eq!(editions.len(), 2);
@@ -395,8 +395,112 @@ async fn test_corrupt_epub_skipped_with_warning() {
     // Corrupt epub (not a valid ZIP)
     std::fs::write(epub_dir.path().join("corrupt.epub"), b"not a zip archive").unwrap();
 
-    let result = scan::scan_directory(&pool, epub_dir.path()).await.unwrap();
+    let result = scan::scan_directory(&pool, epub_dir.path(), &["epub"]).await.unwrap();
     assert_eq!(result.scanned, 2);
     assert_eq!(result.inserted, 1, "only the valid epub should be inserted");
     assert_eq!(result.errors.len(), 1, "one error for the corrupt file");
+}
+
+// ---------------------------------------------------------------------------
+// GAP-20: no-ISBN edition of the same book must share work_id with the
+// ISBN edition when scanned together (previously all_editions_for_dedup
+// excluded ISBN editions from candidates so two separate works were created).
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_scan_no_isbn_edition_shares_work_id_with_isbn_edition() {
+    let (pool, _db_tmp) = temp_pool().await;
+    let epub_dir = TempDir::new().unwrap();
+
+    // Edition A: has ISBN.
+    make_epub(
+        "The Hobbit",
+        &["J.R.R. Tolkien"],
+        Some("9780261102217"),
+        None,
+        None,
+        None,
+        None,
+        Some("en"),
+        None,
+        None,
+        &epub_dir.path().join("hobbit_isbn.epub"),
+    );
+
+    // Edition B: same title+author, no ISBN.
+    make_epub(
+        "The Hobbit",
+        &["J.R.R. Tolkien"],
+        None, // no ISBN
+        None,
+        None,
+        None,
+        None,
+        Some("en"),
+        None,
+        None,
+        &epub_dir.path().join("hobbit_no_isbn.epub"),
+    );
+
+    scan::scan_directory(&pool, epub_dir.path(), &["epub"]).await.unwrap();
+
+    let editions = db::list_editions(&pool).await.unwrap();
+    assert_eq!(editions.len(), 2);
+
+    let work_ids: Vec<_> = editions.iter().map(|e| e.work_id).collect();
+    assert!(work_ids[0].is_some() && work_ids[1].is_some(), "both editions must have a work_id");
+    assert_eq!(
+        work_ids[0], work_ids[1],
+        "ISBN and no-ISBN editions of the same title/author must share a work_id (GAP-20)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// GAP-16: a dc:identifier that is a UUID with exactly 13 numeric digits
+// must NOT be stored as ISBN (previously looks_like_isbn only counted digits).
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_scan_uuid_with_13_digits_not_stored_as_isbn() {
+    let (pool, _db_tmp) = temp_pool().await;
+    let epub_dir = TempDir::new().unwrap();
+
+    // Create EPUB manually with a UUID identifier that has exactly 13 digits.
+    // "urn:uuid:1234567890123" — 13 consecutive digits after the colon.
+    use std::io::Write as _;
+    let dest = epub_dir.path().join("uuid_epub.epub");
+    let file = std::fs::OpenOptions::new()
+        .write(true).create(true).truncate(true)
+        .open(&dest).unwrap();
+    let mut zip = zip::ZipWriter::new(file);
+    let opts = zip::write::FileOptions::default()
+        .compression_method(zip::CompressionMethod::Stored);
+
+    zip.start_file("mimetype", opts).unwrap();
+    zip.write_all(b"application/epub+zip").unwrap();
+
+    zip.start_file("META-INF/container.xml", opts).unwrap();
+    zip.write_all(br#"<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>"#).unwrap();
+
+    zip.start_file("content.opf", opts).unwrap();
+    zip.write_all(br#"<?xml version="1.0" encoding="UTF-8"?>
+<package version="2.0" xmlns="http://www.idpf.org/2007/opf" unique-identifier="uid">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>UUID Test Book</dc:title>
+    <dc:creator>Test Author</dc:creator>
+    <dc:identifier id="uid">urn:uuid:1234567890123</dc:identifier>
+  </metadata>
+  <manifest/><spine/>
+</package>"#).unwrap();
+    zip.finish().unwrap();
+
+    scan::scan_directory(&pool, epub_dir.path(), &["epub"]).await.unwrap();
+
+    let editions = db::list_editions(&pool).await.unwrap();
+    assert_eq!(editions.len(), 1);
+    assert!(
+        editions[0].isbn.is_none(),
+        "UUID identifier must NOT be stored as ISBN; got {:?}",
+        editions[0].isbn
+    );
 }

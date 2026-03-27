@@ -57,7 +57,7 @@ async fn test_double_open_does_not_fail_or_alter_rows() {
     drop(pool1);
 
     let pool2 = db::open(tmp.path()).await.unwrap();
-    let rows = db::list_want(&pool2, None).await.unwrap();
+    let rows = db::list_want(&pool2, None, None).await.unwrap();
     assert_eq!(rows.len(), 1, "row must survive second open");
     assert_eq!(rows[0].title, "Test Book");
 }
@@ -138,7 +138,7 @@ async fn test_goodreads_csv_imports_correctly() {
     assert_eq!(summary.imported, 1);
     assert_eq!(summary.skipped_owned, 0);
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].title, "Dune");
     assert_eq!(rows[0].author.as_deref(), Some("Frank Herbert"));
@@ -158,7 +158,7 @@ async fn test_goodreads_csv_unwraps_isbn_format() {
     let (path, _file) = write_temp_csv(&csv);
     want::import_goodreads_csv(&pool, &path, false).await.unwrap();
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(rows[0].isbn13.as_deref(), Some("9780261102217"));
 }
 
@@ -172,7 +172,7 @@ async fn test_goodreads_csv_null_isbn_stored_as_null() {
     let (path, _file) = write_temp_csv(&csv);
     want::import_goodreads_csv(&pool, &path, false).await.unwrap();
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert!(rows[0].isbn13.is_none(), "empty ISBN13 must be stored as NULL");
 }
 
@@ -226,7 +226,7 @@ async fn test_goodreads_csv_skips_already_owned() {
     assert_eq!(summary.skipped_owned, 1);
     assert_eq!(summary.imported, 0);
 
-    let want_rows = db::list_want(&pool, None).await.unwrap();
+    let want_rows = db::list_want(&pool, None, None).await.unwrap();
     assert!(want_rows.is_empty(), "already-owned book must not be in want_list");
 }
 
@@ -254,9 +254,10 @@ async fn test_goodreads_csv_deduplicates_within_want_list() {
     );
     let (path, _file) = write_temp_csv(&csv);
     let summary = want::import_goodreads_csv(&pool, &path, false).await.unwrap();
-    assert_eq!(summary.imported, 1);
+    assert_eq!(summary.already_wanted, 1, "re-import of existing want must count as already_wanted");
+    assert_eq!(summary.imported, 0);
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(rows.len(), 1, "must not insert a duplicate row");
     assert_eq!(rows[0].title, "Dune", "title must be updated");
     assert_eq!(rows[0].source_id.as_deref(), Some("42"));
@@ -320,7 +321,7 @@ async fn test_openlibrary_import_basic() {
         .unwrap();
 
     assert_eq!(summary.imported, 1);
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].title, "Dune");
     assert_eq!(rows[0].author.as_deref(), Some("Frank Herbert"));
@@ -345,7 +346,7 @@ async fn test_openlibrary_import_null_isbn() {
         .await
         .unwrap();
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert!(rows[0].isbn13.is_none(), "isbn13 must be NULL when OL doesn't provide it");
 }
 
@@ -368,7 +369,7 @@ async fn test_openlibrary_import_404() {
         msg.contains("nobody") && msg.contains("not found"),
         "error must mention username and not found: {msg}"
     );
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert!(rows.is_empty(), "no rows must be inserted on 404");
 }
 
@@ -410,7 +411,7 @@ async fn test_openlibrary_import_empty_list() {
         .await
         .unwrap();
     assert_eq!(summary.imported, 0);
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert!(rows.is_empty());
 }
 
@@ -485,7 +486,7 @@ async fn test_openlibrary_import_pagination() {
         .unwrap();
     assert_eq!(summary.imported, 2, "both pages must be imported");
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     let titles: Vec<String> = rows.iter().map(|r| r.title.clone()).collect();
     assert!(titles.iter().any(|t| t == "Neuromancer"), "Neuromancer not found in {:?}", titles);
     assert!(titles.iter().any(|t| t == "Foundation"), "Foundation not found in {:?}", titles);
@@ -503,7 +504,7 @@ async fn test_text_import_by_format() {
     let summary = want::import_text_file(&pool, &path).await.unwrap();
     assert_eq!(summary.imported, 3);
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     let titles: Vec<&str> = rows.iter().map(|r| r.title.as_str()).collect();
     assert!(titles.contains(&"The Hobbit"), "by-delimiter title");
     assert!(titles.contains(&"Dune"), "dash-delimiter title");
@@ -524,7 +525,7 @@ async fn test_text_import_skips_empty_and_comments() {
     let (path, _file) = write_temp_txt(content);
     let summary = want::import_text_file(&pool, &path).await.unwrap();
     assert_eq!(summary.imported, 1);
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].title, "Real Book");
 }
@@ -549,7 +550,7 @@ async fn test_want_add_title_only() {
         .unwrap();
     assert_eq!(result, want::AddResult::Inserted);
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(rows.len(), 1);
     let row = &rows[0];
     assert_eq!(row.title, "Just a Title");
@@ -576,7 +577,7 @@ async fn test_want_add_with_all_fields() {
     .unwrap();
     assert_eq!(result, want::AddResult::Inserted);
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     let row = &rows[0];
     assert_eq!(row.author.as_deref(), Some("Full Author"));
     assert_eq!(row.isbn13.as_deref(), Some("9781234567890"));
@@ -608,7 +609,7 @@ async fn test_want_add_already_owned() {
     .await
     .unwrap();
     assert_eq!(result, want::AddResult::AlreadyOwned);
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert!(rows.is_empty());
 }
 
@@ -643,7 +644,7 @@ async fn test_want_add_already_in_want_list() {
     .unwrap();
     assert_eq!(result, want::AddResult::AlreadyInWantList);
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(rows.len(), 1, "must not insert a duplicate");
     assert_eq!(rows[0].priority, 7, "priority must be updated to new value");
     assert_eq!(
@@ -690,7 +691,7 @@ async fn test_want_enrich_finds_isbn() {
     assert_eq!(eligible, 1);
     assert_eq!(enriched, 1);
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(rows[0].isbn13.as_deref(), Some("9780441013593"));
 }
 
@@ -725,8 +726,8 @@ async fn test_want_enrich_skips_missing_author() {
     let (pool, _tmp) = temp_pool().await;
     let server = MockServer::start().await;
 
-    // Row with NULL author — returned by the query but skipped by the guard
-    // with a stderr warning; isbn13 must remain NULL.
+    // Row with NULL author — excluded from the eligibility query entirely;
+    // isbn13 must remain NULL.
     db::insert_want(&pool, "Title Only", None, None, "manual", None, 5, None)
         .await
         .unwrap();
@@ -734,11 +735,11 @@ async fn test_want_enrich_skips_missing_author() {
     let client = reqwest::Client::new();
     let (enriched, eligible) =
         want::enrich_want_list(&pool, &client, &server.uri()).await.unwrap();
-    assert_eq!(eligible, 1, "row without author is returned but skipped");
+    assert_eq!(eligible, 0, "no-author row must not be counted as eligible");
     assert_eq!(enriched, 0);
 
     // isbn13 must still be NULL.
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(rows.len(), 1);
     assert!(rows[0].isbn13.is_none(), "isbn13 must remain NULL for skipped row");
 }
@@ -775,7 +776,7 @@ async fn test_want_enrich_no_result_leaves_row_unchanged() {
     assert_eq!(eligible, 1);
     assert_eq!(enriched, 0);
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert!(rows[0].isbn13.is_none(), "row must remain unchanged when no result");
 }
 
@@ -820,6 +821,148 @@ async fn test_want_enrich_summary_counts() {
         want::enrich_want_list(&pool, &client, &server.uri()).await.unwrap();
     assert_eq!(eligible, 3);
     assert_eq!(enriched, 2);
+}
+
+// ---------------------------------------------------------------------------
+// New tests: AC-26 through AC-30
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_want_add_manual_inserts_row() {
+    let (pool, _tmp) = temp_pool().await;
+    let result = want::add_manual(&pool, "The Foundation Trilogy", Some("Isaac Asimov"), None, 5, None)
+        .await
+        .unwrap();
+    assert_eq!(result, want::AddResult::Inserted, "first insert must return Inserted");
+
+    let rows = db::list_want(&pool, None, None).await.unwrap();
+    assert_eq!(rows.len(), 1, "must have exactly 1 row");
+    assert_eq!(rows[0].title, "The Foundation Trilogy");
+    assert_eq!(rows[0].author.as_deref(), Some("Isaac Asimov"));
+}
+
+#[tokio::test]
+async fn test_want_add_manual_idempotent() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Pass no ISBN so dedup goes through the fuzzy title+author path (AC-27).
+    let first = want::add_manual(
+        &pool,
+        "The Chronicles of the Ancient Kingdoms",
+        Some("Some Test Author"),
+        None,
+        5,
+        None,
+    )
+    .await
+    .unwrap();
+    assert_eq!(first, want::AddResult::Inserted, "first insert must return Inserted");
+
+    let second = want::add_manual(
+        &pool,
+        "The Chronicles of the Ancient Kingdoms",
+        Some("Some Test Author"),
+        None,
+        5,
+        None,
+    )
+    .await
+    .unwrap();
+    assert_eq!(second, want::AddResult::AlreadyInWantList, "second insert must return AlreadyInWantList");
+
+    let rows = db::list_want(&pool, None, None).await.unwrap();
+    assert_eq!(rows.len(), 1, "must not insert duplicate row");
+}
+
+#[tokio::test]
+async fn test_want_list_returns_all_rows() {
+    let (pool, _tmp) = temp_pool().await;
+
+    db::insert_want(&pool, "The Martian Chronicles", Some("Ray Bradbury"), None, "manual", None, 5, None)
+        .await
+        .unwrap();
+    db::insert_want(&pool, "Brave New World", Some("Aldous Huxley"), None, "manual", None, 5, None)
+        .await
+        .unwrap();
+    db::insert_want(&pool, "Fahrenheit 451", Some("Ray Bradbury"), None, "manual", None, 5, None)
+        .await
+        .unwrap();
+
+    let rows = db::list_want(&pool, None, None).await.unwrap();
+    assert_eq!(rows.len(), 3, "must return all 3 rows");
+
+    let titles: Vec<&str> = rows.iter().map(|r| r.title.as_str()).collect();
+    assert!(titles.contains(&"The Martian Chronicles"), "must contain The Martian Chronicles");
+    assert!(titles.contains(&"Brave New World"), "must contain Brave New World");
+    assert!(titles.contains(&"Fahrenheit 451"), "must contain Fahrenheit 451");
+}
+
+#[tokio::test]
+async fn test_want_enrich_updates_isbn() {
+    let (pool, _tmp) = temp_pool().await;
+    let server = MockServer::start().await;
+
+    let id = db::insert_want(
+        &pool,
+        "The Left Hand of Darkness",
+        Some("Ursula K Le Guin"),
+        None,
+        "manual",
+        None,
+        5,
+        None,
+    )
+    .await
+    .unwrap();
+
+    let search_body = serde_json::json!({
+        "docs": [{ "isbn": ["9780441478125"] }]
+    });
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(search_body))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    let (enriched, eligible) = want::enrich_want_list(&pool, &client, &server.uri()).await.unwrap();
+    assert_eq!(eligible, 1, "one row must be eligible");
+    assert_eq!(enriched, 1, "one row must be enriched");
+
+    let row = db::get_want(&pool, id).await.unwrap().expect("row must exist");
+    assert_eq!(
+        row.isbn13.as_deref(),
+        Some("9780441478125"),
+        "isbn13 must be updated to the mocked value"
+    );
+}
+
+#[tokio::test]
+async fn test_want_enrich_skips_no_author() {
+    let (pool, _tmp) = temp_pool().await;
+    let server = MockServer::start().await;
+
+    let id = db::insert_want(
+        &pool,
+        "A Book With No Author",
+        None, // no author
+        None,
+        "manual",
+        None,
+        5,
+        None,
+    )
+    .await
+    .unwrap();
+
+    let client = reqwest::Client::new();
+    let (enriched, eligible) = want::enrich_want_list(&pool, &client, &server.uri()).await.unwrap();
+    // Rows with no author are excluded from the eligibility query entirely.
+    assert_eq!(eligible, 0, "no-author row must not be counted as eligible");
+    assert_eq!(enriched, 0, "row with no author must not be enriched");
+
+    let row = db::get_want(&pool, id).await.unwrap().expect("row must exist");
+    assert!(row.isbn13.is_none(), "isbn13 must remain null when author is missing");
 }
 
 // ---------------------------------------------------------------------------
@@ -927,7 +1070,7 @@ async fn test_goodreads_csv_isbn10_fallback_stores_isbn13() {
     let summary = want::import_goodreads_csv(&pool, &path, false).await.unwrap();
     assert_eq!(summary.imported, 1, "ISBN10-only row must be imported");
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(
         rows[0].isbn13.as_deref(),
@@ -950,21 +1093,21 @@ async fn test_goodreads_csv_shelf_filter_only_to_read() {
     // Three rows on different shelves.
     let csv = format!(
         "{GOODREADS_HEADER}{}{}{}",
-        goodreads_row_with_isbn10_and_shelf("1", "Book A", "Author A", "", "", "to-read"),
-        goodreads_row_with_isbn10_and_shelf("2", "Book B", "Author B", "", "", "read"),
-        goodreads_row_with_isbn10_and_shelf("3", "Book C", "Author C", "", "", "currently-reading"),
+        goodreads_row_with_isbn10_and_shelf("1", "Foundation", "Isaac Asimov", "", "", "to-read"),
+        goodreads_row_with_isbn10_and_shelf("2", "Dune", "Frank Herbert", "", "", "read"),
+        goodreads_row_with_isbn10_and_shelf("3", "Neuromancer", "William Gibson", "", "", "currently-reading"),
     );
     let (path, _file) = write_temp_csv(&csv);
     let summary = want::import_goodreads_csv(&pool, &path, false).await.unwrap();
 
-    // Only "Book A" should be imported.
+    // Only "Foundation" should be imported.
     assert_eq!(summary.imported, 1, "only to-read shelf rows must be imported");
     // "read" and "currently-reading" are counted as skipped_rows.
     assert_eq!(summary.skipped_rows, 2, "non-to-read shelves must increment skipped_rows");
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(rows.len(), 1);
-    assert_eq!(rows[0].title, "Book A");
+    assert_eq!(rows[0].title, "Foundation");
 }
 
 /// With all_shelves=true, all shelf rows are imported.
@@ -974,9 +1117,9 @@ async fn test_goodreads_csv_all_shelves_imports_all() {
 
     let csv = format!(
         "{GOODREADS_HEADER}{}{}{}",
-        goodreads_row_with_isbn10_and_shelf("1", "Book A", "Author A", "", "", "to-read"),
-        goodreads_row_with_isbn10_and_shelf("2", "Book B", "Author B", "", "", "read"),
-        goodreads_row_with_isbn10_and_shelf("3", "Book C", "Author C", "", "", "currently-reading"),
+        goodreads_row_with_isbn10_and_shelf("1", "Foundation", "Isaac Asimov", "", "", "to-read"),
+        goodreads_row_with_isbn10_and_shelf("2", "Dune", "Frank Herbert", "", "", "read"),
+        goodreads_row_with_isbn10_and_shelf("3", "Neuromancer", "William Gibson", "", "", "currently-reading"),
     );
     let (path, _file) = write_temp_csv(&csv);
     let summary = want::import_goodreads_csv(&pool, &path, true).await.unwrap();
@@ -1002,7 +1145,7 @@ async fn test_goodreads_csv_title_with_comma() {
     let summary = want::import_goodreads_csv(&pool, &path, false).await.unwrap();
     assert_eq!(summary.imported, 1);
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(
         rows[0].title,
         "Good Omens: The Nice and Accurate Prophecies of Agnes Nutter, Witch"
@@ -1025,7 +1168,7 @@ async fn test_goodreads_csv_unicode_author() {
     let summary = want::import_goodreads_csv(&pool, &path, false).await.unwrap();
     assert_eq!(summary.imported, 1);
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(rows[0].author.as_deref(), Some("Михаил Булгаков"));
 }
 
@@ -1071,7 +1214,7 @@ async fn test_goodreads_csv_crlf_line_endings() {
         .unwrap();
     assert_eq!(summary.imported, 1, "CRLF CSV must parse correctly");
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(rows[0].title, "Dune");
 }
 
@@ -1096,11 +1239,223 @@ async fn test_goodreads_csv_additional_authors_ignored() {
     let (path, _file) = write_temp_csv(&csv);
     want::import_goodreads_csv(&pool, &path, false).await.unwrap();
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     // The author stored must be "Terry Pratchett" only — Additional Authors is ignored.
     assert_eq!(
         rows[0].author.as_deref(),
         Some("Terry Pratchett"),
         "only primary Author column must be stored; Additional Authors must be ignored"
     );
+}
+
+// ---------------------------------------------------------------------------
+// GAP-03: find_existing_want NULL-author path — title-only dedup E2E.
+// Importing the same title-only entry (no author, no ISBN) twice must produce
+// exactly 1 want_list row. No UNIQUE constraint on title exists in the schema,
+// so the dedup relies entirely on the in-code find_existing_want logic.
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_text_file_import_title_only_no_duplicate() {
+    let (pool, _tmp) = temp_pool().await;
+
+    let content = "The Name of the Wind\nThe Name of the Wind\n";
+    let (path, _file) = write_temp_txt(content);
+
+    want::import_text_file(&pool, &path).await.unwrap();
+
+    let rows = db::list_want(&pool, None, None).await.unwrap();
+    assert_eq!(
+        rows.len(),
+        1,
+        "importing the same title-only entry twice must produce exactly 1 want_list row; got {}",
+        rows.len()
+    );
+}
+
+#[tokio::test]
+async fn test_text_file_import_title_only_case_insensitive_dedup() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Different casing — should still be treated as the same entry.
+    let content = "the name of the wind\nThe Name of the Wind\n";
+    let (path, _file) = write_temp_txt(content);
+
+    want::import_text_file(&pool, &path).await.unwrap();
+
+    let rows = db::list_want(&pool, None, None).await.unwrap();
+    assert_eq!(
+        rows.len(),
+        1,
+        "case-insensitive title-only dedup must prevent duplicate; got {} rows",
+        rows.len()
+    );
+}
+
+// ---------------------------------------------------------------------------
+// GAP-12: isbn10_to_isbn13 with X check digit returns None (documented
+// limitation); also verify X in a non-check position returns None.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_isbn10_to_isbn13_x_check_digit_converts() {
+    // ISBN-10 "030640615X" — implementation drops the check digit and recomputes
+    // for ISBN-13, so X at position 10 is handled correctly (produces Some).
+    let result = want::isbn10_to_isbn13("030640615X");
+    assert!(
+        result.is_some(),
+        "isbn10_to_isbn13 must succeed for ISBN-10 with X check digit"
+    );
+    let isbn13 = result.unwrap();
+    assert_eq!(isbn13.len(), 13);
+    assert!(isbn13.starts_with("978"));
+}
+
+#[test]
+fn test_isbn10_to_isbn13_x_in_middle_returns_none() {
+    // X in the middle position: normalize_isbn keeps X, but then the checksum
+    // calculation calls c.to_digit(10) on X which returns None → try_fold short-circuits.
+    let result = want::isbn10_to_isbn13("0X30640615");
+    // X in a non-check position cannot be converted.
+    assert!(
+        result.is_none(),
+        "isbn10_to_isbn13 must return None when X appears in a non-check position"
+    );
+}
+
+#[test]
+fn test_isbn10_to_isbn13_valid_numeric_converts() {
+    // "0306406152" → should produce a valid ISBN-13 (9780306406157).
+    let result = want::isbn10_to_isbn13("0306406152");
+    assert!(
+        result.is_some(),
+        "isbn10_to_isbn13 must convert a valid all-numeric ISBN-10"
+    );
+    let isbn13 = result.unwrap();
+    assert_eq!(isbn13.len(), 13, "converted ISBN-13 must have 13 digits");
+    assert!(isbn13.starts_with("978"), "ISBN-13 must start with 978");
+}
+
+// ---------------------------------------------------------------------------
+// GAP-22: add_manual must reject empty-string title
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_add_manual_rejects_empty_title() {
+    let (pool, _tmp) = temp_pool().await;
+    let result = want::add_manual(&pool, "", None, None, 5, None).await;
+    assert!(result.is_err(), "add_manual must return Err for empty title");
+}
+
+// ---------------------------------------------------------------------------
+// GAP-04: enrich_want_list gracefully continues when OL returns HTTP 500
+// ---------------------------------------------------------------------------
+
+/// When OL returns HTTP 500 for the first book and a valid ISBN response for
+/// the second book, enrich_want_list must:
+///   1. Return Ok(summary) — not abort
+///   2. Still enrich the second book
+///   3. Leave the first book's isbn13 as NULL
+///
+/// The implementation path goes through Ok(None) from find_isbn_by_title_author
+/// (not Err) when a non-success HTTP status is returned.
+#[tokio::test]
+async fn test_enrich_want_list_continues_after_http_500() {
+    let (pool, _tmp) = temp_pool().await;
+    let server = MockServer::start().await;
+
+    // Insert two books without ISBNs.
+    db::insert_want(&pool, "Book That Gets 500", Some("Author One"), None, "manual", None, 5, None)
+        .await
+        .unwrap();
+    db::insert_want(&pool, "Book That Gets ISBN", Some("Author Two"), None, "manual", None, 5, None)
+        .await
+        .unwrap();
+
+    // First call returns HTTP 500; second call returns a valid ISBN.
+    // Register the 500 mock first (FIFO: first registered = highest priority for
+    // general matchers), limited to 1 hit.  The ISBN mock is registered second
+    // and handles subsequent requests.
+    let isbn_body = serde_json::json!({ "docs": [{ "isbn": ["9780000000099"] }] });
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search\.json"))
+        .respond_with(ResponseTemplate::new(500))
+        .up_to_n_times(1)
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(isbn_body))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    let result = want::enrich_want_list(&pool, &client, &server.uri()).await;
+
+    // Must return Ok — not abort on HTTP 500.
+    assert!(result.is_ok(), "enrich_want_list must return Ok even when OL returns HTTP 500");
+
+    let (enriched, eligible) = result.unwrap();
+    assert_eq!(eligible, 2, "both books must be eligible (no isbn13)");
+    // Exactly one book got enriched; the 500 response yields Ok(None) so isbn13 stays NULL.
+    assert_eq!(enriched, 1, "only the book with a valid OL response must be enriched");
+
+    let rows = db::list_want(&pool, None, None).await.unwrap();
+    let with_isbn: Vec<_> = rows.iter().filter(|r| r.isbn13.is_some()).collect();
+    assert_eq!(with_isbn.len(), 1, "exactly one book must have an isbn13 after enrichment");
+
+    let without_isbn: Vec<_> = rows.iter().filter(|r| r.isbn13.is_none()).collect();
+    assert_eq!(without_isbn.len(), 1, "the book that got HTTP 500 must still have NULL isbn13");
+}
+
+// ---------------------------------------------------------------------------
+// GAP-30: add_manual must preserve existing source_id on update
+// ---------------------------------------------------------------------------
+
+/// When add_manual updates an existing want-list entry that was originally
+/// imported via Goodreads CSV (and has a source_id), the source_id must be
+/// preserved — not overwritten with NULL.
+#[tokio::test]
+async fn test_add_manual_preserves_source_id_on_update() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Insert a Goodreads-sourced entry with a source_id.
+    db::insert_want(
+        &pool,
+        "Dune",
+        Some("Frank Herbert"),
+        Some("9780441013593"),
+        "goodreads_csv",
+        Some("gr_book_123"),
+        5,
+        None,
+    )
+    .await
+    .unwrap();
+
+    // Manual add with the same ISBN — should update, not insert.
+    let result = want::add_manual(
+        &pool,
+        "Dune",
+        Some("Frank Herbert"),
+        Some("9780441013593"),
+        8,
+        Some("Updated note"),
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result, want::AddResult::AlreadyInWantList);
+
+    let rows = db::list_want(&pool, None, None).await.unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(
+        rows[0].source_id.as_deref(),
+        Some("gr_book_123"),
+        "source_id must be preserved after manual update (GAP-30)"
+    );
+    assert_eq!(rows[0].priority, 8, "priority must be updated");
+    assert_eq!(rows[0].notes.as_deref(), Some("Updated note"), "notes must be updated");
 }

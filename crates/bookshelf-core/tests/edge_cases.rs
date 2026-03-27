@@ -223,9 +223,10 @@ fn test_case_04_multiple_authors_with_comma() {
     let tmp = make_epub_raw(opf.as_bytes(), "content.opf");
     let meta = epub::parse_epub(tmp.path()).unwrap();
     let authors = meta.authors.as_deref().unwrap_or("");
-    assert!(authors.contains("Le Guin, Ursula K."), "got: {authors}");
-    assert!(authors.contains("Smith, John"), "got: {authors}");
-    assert!(authors.contains("Doe, Jane"), "got: {authors}");
+    // Author names are normalized to "Firstname Lastname" form at parse time.
+    assert!(authors.contains("Ursula K. Le Guin"), "got: {authors}");
+    assert!(authors.contains("John Smith"), "got: {authors}");
+    assert!(authors.contains("Jane Doe"), "got: {authors}");
 }
 
 // ---------------------------------------------------------------------------
@@ -812,7 +813,7 @@ async fn test_case_34_same_isbn_two_files_same_work_id() {
     std::fs::copy(e1.path(), dir.path().join("foundation_a.epub")).unwrap();
     std::fs::copy(e2.path(), dir.path().join("foundation_b.epub")).unwrap();
 
-    scan::scan_directory(&pool, dir.path()).await.unwrap();
+    scan::scan_directory(&pool, dir.path(), &["epub"]).await.unwrap();
 
     let editions = db::list_editions(&pool).await.unwrap();
     assert_eq!(editions.len(), 2, "two separate edition rows");
@@ -842,7 +843,7 @@ async fn test_case_35_same_title_author_no_isbn_same_work_id() {
     std::fs::copy(e1.path(), dir.path().join("novel_a.epub")).unwrap();
     std::fs::copy(e2.path(), dir.path().join("novel_b.epub")).unwrap();
 
-    scan::scan_directory(&pool, dir.path()).await.unwrap();
+    scan::scan_directory(&pool, dir.path(), &["epub"]).await.unwrap();
 
     let editions = db::list_editions(&pool).await.unwrap();
     assert_eq!(editions.len(), 2);
@@ -876,7 +877,7 @@ async fn test_case_36_same_title_different_author_different_work_id() {
     std::fs::copy(e1.path(), dir.path().join("genesis_a.epub")).unwrap();
     std::fs::copy(e2.path(), dir.path().join("genesis_b.epub")).unwrap();
 
-    scan::scan_directory(&pool, dir.path()).await.unwrap();
+    scan::scan_directory(&pool, dir.path(), &["epub"]).await.unwrap();
 
     let editions = db::list_editions(&pool).await.unwrap();
     assert_eq!(editions.len(), 2);
@@ -919,7 +920,7 @@ async fn test_case_37_different_title_same_author_different_work_id() {
     std::fs::copy(e1.path(), dir.path().join("alpha.epub")).unwrap();
     std::fs::copy(e2.path(), dir.path().join("beta.epub")).unwrap();
 
-    scan::scan_directory(&pool, dir.path()).await.unwrap();
+    scan::scan_directory(&pool, dir.path(), &["epub"]).await.unwrap();
 
     let editions = db::list_editions(&pool).await.unwrap();
     assert_eq!(editions.len(), 2);
@@ -1012,7 +1013,7 @@ fn test_case_40_leading_the_stripped() {
 async fn test_case_41_scan_empty_directory() {
     let (pool, _db) = temp_pool().await;
     let dir = TempDir::new().unwrap();
-    let result = scan::scan_directory(&pool, dir.path()).await.unwrap();
+    let result = scan::scan_directory(&pool, dir.path(), &["epub"]).await.unwrap();
     assert_eq!(result.scanned, 0, "empty dir: 0 scanned");
     assert_eq!(result.inserted, 0, "empty dir: 0 inserted");
     assert_eq!(result.errors.len(), 0, "empty dir: 0 errors");
@@ -1021,7 +1022,7 @@ async fn test_case_41_scan_empty_directory() {
 #[tokio::test]
 async fn test_case_42_scan_nonexistent_path_returns_err() {
     let (pool, _db) = temp_pool().await;
-    let result = scan::scan_directory(&pool, std::path::Path::new("/nonexistent/path/xyz/abc"))
+    let result = scan::scan_directory(&pool, std::path::Path::new("/nonexistent/path/xyz/abc"), &["epub"])
         .await;
     assert!(result.is_err(), "nonexistent path must return Err");
     let err = result.unwrap_err().to_string();
@@ -1035,7 +1036,7 @@ async fn test_case_42_scan_nonexistent_path_returns_err() {
 async fn test_case_43_scan_file_path_returns_err() {
     let (pool, _db) = temp_pool().await;
     let tmp_file = NamedTempFile::new().unwrap();
-    let result = scan::scan_directory(&pool, tmp_file.path()).await;
+    let result = scan::scan_directory(&pool, tmp_file.path(), &["epub"]).await;
     assert!(result.is_err(), "file path must return Err");
 }
 
@@ -1073,7 +1074,7 @@ async fn test_case_47_search_empty_string_does_not_crash() {
     );
     let epub_file = make_epub_raw(opf.as_bytes(), "content.opf");
     std::fs::copy(epub_file.path(), dir.path().join("test.epub")).unwrap();
-    scan::scan_directory(&pool, dir.path()).await.unwrap();
+    scan::scan_directory(&pool, dir.path(), &["epub"]).await.unwrap();
 
     // Empty search query must not panic
     let editions = db::list_editions(&pool).await.unwrap();
@@ -1102,10 +1103,10 @@ async fn test_case_48_scan_twice_same_directory_idempotent() {
     let epub_file = make_epub_raw(opf.as_bytes(), "content.opf");
     std::fs::copy(epub_file.path(), dir.path().join("book.epub")).unwrap();
 
-    let r1 = scan::scan_directory(&pool, dir.path()).await.unwrap();
+    let r1 = scan::scan_directory(&pool, dir.path(), &["epub"]).await.unwrap();
     assert_eq!(r1.inserted, 1);
 
-    let r2 = scan::scan_directory(&pool, dir.path()).await.unwrap();
+    let r2 = scan::scan_directory(&pool, dir.path(), &["epub"]).await.unwrap();
     let editions = db::list_editions(&pool).await.unwrap();
     assert_eq!(editions.len(), 1, "second scan must not duplicate rows");
     assert_eq!(r2.scanned, 1, "second scan still scans the file");
@@ -1226,6 +1227,60 @@ fn test_opf3_belongs_to_collection() {
         "OPF3 refines group-position: series_position = {:?}",
         meta.series_position
     );
+}
+
+/// When an OPF contains BOTH a `calibre:series` meta (OPF 2 style) AND a
+/// `belongs-to-collection` meta (OPF 3 style), the parser sets series_name
+/// to whichever appears LAST in document order.  This test pins that
+/// last-wins behaviour so any future change is visible.
+#[test]
+fn test_calibre_series_and_belongs_to_collection_last_wins() {
+    // calibre:series comes first, belongs-to-collection comes second.
+    // Expected: belongs-to-collection value wins.
+    let opf = opf3_standard(
+        r#"    <dc:title>Some Book</dc:title>
+    <dc:creator>Some Author</dc:creator>
+    <meta name="calibre:series" content="OPF2 Series"/>
+    <meta name="calibre:series_index" content="1"/>
+    <meta property="belongs-to-collection">OPF3 Series</meta>
+    <meta property="group-position">2</meta>"#,
+        "",
+    );
+    let tmp = make_epub_raw(opf.as_bytes(), "content.opf");
+    let meta = epub::parse_epub(tmp.path()).unwrap();
+    // belongs-to-collection is processed last → wins.
+    assert_eq!(
+        meta.series_name.as_deref(),
+        Some("OPF3 Series"),
+        "belongs-to-collection (last in document) must win over calibre:series"
+    );
+    assert_eq!(meta.series_position.as_deref(), Some("2"));
+}
+
+/// When `belongs-to-collection` comes BEFORE `calibre:series` in document
+/// order, the calibre value wins (last-wins rule).
+#[test]
+fn test_belongs_to_collection_then_calibre_series_last_wins() {
+    // belongs-to-collection first, calibre:series second.
+    // Expected: calibre:series value wins.
+    let opf = opf3_standard(
+        r#"    <dc:title>Some Book</dc:title>
+    <dc:creator>Some Author</dc:creator>
+    <meta property="belongs-to-collection">OPF3 Series</meta>
+    <meta property="group-position">1</meta>
+    <meta name="calibre:series" content="OPF2 Series"/>
+    <meta name="calibre:series_index" content="3"/>"#,
+        "",
+    );
+    let tmp = make_epub_raw(opf.as_bytes(), "content.opf");
+    let meta = epub::parse_epub(tmp.path()).unwrap();
+    // calibre:series is processed last → wins.
+    assert_eq!(
+        meta.series_name.as_deref(),
+        Some("OPF2 Series"),
+        "calibre:series (last in document) must win over belongs-to-collection"
+    );
+    assert_eq!(meta.series_position.as_deref(), Some("3"));
 }
 
 /// Series position "3.0" — decimal with zero fraction

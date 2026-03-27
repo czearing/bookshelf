@@ -169,7 +169,7 @@ async fn test_series_fill_no_series() {
     let (pool, _tmp) = temp_pool().await;
     let server = MockServer::start().await;
     let client = reqwest::Client::new();
-    let result = series::series_fill(&pool, &client, &server.uri()).await.unwrap();
+    let result = series::series_fill(&pool, &client, &server.uri(), None).await.unwrap();
     assert_eq!(result, 0);
     // Verify no requests were made to the mock server.
     let requests = server.received_requests().await.unwrap();
@@ -196,7 +196,7 @@ async fn test_series_fill_queries_ol() {
         .await;
 
     let client = reqwest::Client::new();
-    series::series_fill(&pool, &client, &server.uri()).await.unwrap();
+    series::series_fill(&pool, &client, &server.uri(), None).await.unwrap();
 
     let requests = server.received_requests().await.unwrap();
     assert!(!requests.is_empty(), "OL search endpoint must be queried");
@@ -231,7 +231,9 @@ async fn test_series_fill_inserts_missing() {
                 "isbn": ["9780441013593"],
                 "series": ["Dune Chronicles"],
                 "series_number": "1",
-                "key": "/works/OL100W"
+                "key": "/works/OL100W",
+                "number_of_pages_median": 400,
+                "edition_count": 10
             },
             {
                 "title": "Dune Messiah",
@@ -239,7 +241,9 @@ async fn test_series_fill_inserts_missing() {
                 "isbn": [],
                 "series": ["Dune Chronicles"],
                 "series_number": "2",
-                "key": "/works/OL101W"
+                "key": "/works/OL101W",
+                "number_of_pages_median": 300,
+                "edition_count": 8
             },
             {
                 "title": "Children of Dune",
@@ -247,7 +251,9 @@ async fn test_series_fill_inserts_missing() {
                 "isbn": ["9780441104001"],
                 "series": ["Dune Chronicles"],
                 "series_number": "3",
-                "key": "/works/OL102W"
+                "key": "/works/OL102W",
+                "number_of_pages_median": 350,
+                "edition_count": 7
             }
         ]
     });
@@ -259,11 +265,11 @@ async fn test_series_fill_inserts_missing() {
         .await;
 
     let client = reqwest::Client::new();
-    let inserted = series::series_fill(&pool, &client, &server.uri()).await.unwrap();
+    let inserted = series::series_fill(&pool, &client, &server.uri(), None).await.unwrap();
     // Only "Dune Messiah" should be inserted (Dune and Children of Dune are owned by ISBN).
     assert_eq!(inserted, 1, "only the missing entry must be inserted");
 
-    let wants = db::list_want(&pool, None).await.unwrap();
+    let wants = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(wants.len(), 1);
     assert_eq!(wants[0].title, "Dune Messiah");
     assert_eq!(wants[0].source, "series_fill");
@@ -277,19 +283,22 @@ async fn test_series_fill_inserts_missing() {
 #[tokio::test]
 async fn test_series_fill_no_insert_when_all_owned() {
     let (pool, _tmp) = temp_pool().await;
-    insert_series_edition(&pool, "Book 1", "All Owned", "1", "ao1").await;
+    // Use an ISBN so the ISBN-only owned check (no fuzzy) can suppress re-insertion.
+    insert_series_edition_with_isbn(&pool, "Book 1", "All Owned", "1", "9780000000001", "ao1").await;
 
     let server = MockServer::start().await;
 
-    // OL returns Book 1 which is already owned.
+    // OL returns Book 1 with the same ISBN that was scanned — ISBN exact match suppresses it.
     let ol_response = serde_json::json!({
         "docs": [{
             "title": "Book 1",
             "author_name": ["Series Author"],
-            "isbn": [],
+            "isbn": ["9780000000001"],
             "series": ["All Owned"],
             "series_number": "1",
-            "key": "/works/OL200W"
+            "key": "/works/OL200W",
+            "number_of_pages_median": 300,
+            "edition_count": 5
         }]
     });
 
@@ -300,9 +309,9 @@ async fn test_series_fill_no_insert_when_all_owned() {
         .await;
 
     let client = reqwest::Client::new();
-    let inserted = series::series_fill(&pool, &client, &server.uri()).await.unwrap();
+    let inserted = series::series_fill(&pool, &client, &server.uri(), None).await.unwrap();
     assert_eq!(inserted, 0);
-    let wants = db::list_want(&pool, None).await.unwrap();
+    let wants = db::list_want(&pool, None, None).await.unwrap();
     assert!(wants.is_empty());
 }
 
@@ -324,7 +333,7 @@ async fn test_series_fill_empty_ol_response() {
         .await;
 
     let client = reqwest::Client::new();
-    let inserted = series::series_fill(&pool, &client, &server.uri()).await.unwrap();
+    let inserted = series::series_fill(&pool, &client, &server.uri(), None).await.unwrap();
     assert_eq!(inserted, 0);
 }
 
@@ -348,12 +357,12 @@ async fn test_series_fill_ol_error_continues() {
         .await;
 
     let client = reqwest::Client::new();
-    let result = series::series_fill(&pool, &client, &server.uri()).await;
+    let result = series::series_fill(&pool, &client, &server.uri(), None).await;
     // Must return Err when any series OL request fails.
     assert!(result.is_err(), "series_fill must return Err when OL returns HTTP error");
 
     // No want entries should have been inserted.
-    let wants = db::list_want(&pool, None).await.unwrap();
+    let wants = db::list_want(&pool, None, None).await.unwrap();
     assert!(wants.is_empty(), "no want entries on error");
 }
 
@@ -486,7 +495,9 @@ async fn test_e2e_series_fill_then_grab() {
                 "isbn": ["9780553293357"],
                 "series": ["Foundation"],
                 "series_number": "1",
-                "key": "/works/OL400W"
+                "key": "/works/OL400W",
+                "number_of_pages_median": 244,
+                "edition_count": 15
             },
             {
                 "title": "Foundation and Empire",
@@ -494,7 +505,9 @@ async fn test_e2e_series_fill_then_grab() {
                 "isbn": [],
                 "series": ["Foundation"],
                 "series_number": "2",
-                "key": "/works/OL401W"
+                "key": "/works/OL401W",
+                "number_of_pages_median": 247,
+                "edition_count": 12
             },
             {
                 "title": "Second Foundation",
@@ -502,7 +515,9 @@ async fn test_e2e_series_fill_then_grab() {
                 "isbn": ["9780553293364"],
                 "series": ["Foundation"],
                 "series_number": "3",
-                "key": "/works/OL402W"
+                "key": "/works/OL402W",
+                "number_of_pages_median": 256,
+                "edition_count": 14
             }
         ]
     });
@@ -514,10 +529,10 @@ async fn test_e2e_series_fill_then_grab() {
         .await;
 
     let client = reqwest::Client::new();
-    let inserted = series::series_fill(&pool, &client, &server.uri()).await.unwrap();
+    let inserted = series::series_fill(&pool, &client, &server.uri(), None).await.unwrap();
     assert_eq!(inserted, 1, "only the missing #2 should be inserted");
 
-    let wants = db::list_want(&pool, None).await.unwrap();
+    let wants = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(wants.len(), 1);
     assert_eq!(wants[0].title, "Foundation and Empire");
     assert_eq!(wants[0].source, "series_fill");
@@ -580,7 +595,9 @@ async fn test_series_fill_idempotent() {
                 "isbn": ["9780765326355"],
                 "series": ["The Stormlight Archive"],
                 "series_number": "1",
-                "key": "/works/OL500W"
+                "key": "/works/OL500W",
+                "number_of_pages_median": 1007,
+                "edition_count": 18
             },
             {
                 "title": "Words of Radiance",
@@ -588,7 +605,9 @@ async fn test_series_fill_idempotent() {
                 "isbn": [],
                 "series": ["The Stormlight Archive"],
                 "series_number": "2",
-                "key": "/works/OL501W"
+                "key": "/works/OL501W",
+                "number_of_pages_median": 1088,
+                "edition_count": 14
             },
             {
                 "title": "Oathbringer",
@@ -596,7 +615,9 @@ async fn test_series_fill_idempotent() {
                 "isbn": ["9780765326386"],
                 "series": ["The Stormlight Archive"],
                 "series_number": "3",
-                "key": "/works/OL502W"
+                "key": "/works/OL502W",
+                "number_of_pages_median": 1248,
+                "edition_count": 12
             }
         ]
     });
@@ -612,18 +633,18 @@ async fn test_series_fill_idempotent() {
     let client = reqwest::Client::new();
 
     // First call — should insert 1 entry ("Words of Radiance").
-    let inserted_first = series::series_fill(&pool, &client, &server.uri()).await.unwrap();
+    let inserted_first = series::series_fill(&pool, &client, &server.uri(), None).await.unwrap();
     assert_eq!(inserted_first, 1, "first call must insert exactly 1 missing entry");
 
-    let wants_after_first = db::list_want(&pool, None).await.unwrap();
+    let wants_after_first = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(wants_after_first.len(), 1, "want_list must have 1 entry after first fill");
 
     // Second call — same mock, same DB. Must insert 0 (idempotent).
-    let inserted_second = series::series_fill(&pool, &client, &server.uri()).await.unwrap();
+    let inserted_second = series::series_fill(&pool, &client, &server.uri(), None).await.unwrap();
     assert_eq!(inserted_second, 0, "second call must insert 0 (idempotent)");
 
     // want_list count must be unchanged.
-    let wants_after_second = db::list_want(&pool, None).await.unwrap();
+    let wants_after_second = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(
         wants_after_second.len(),
         1,
@@ -747,4 +768,692 @@ async fn test_series_same_name_different_authors() {
         gaps.is_empty(),
         "no false gap must be generated between duplicate position 1 values"
     );
+}
+
+// ---------------------------------------------------------------------------
+// GAP-11: All-NULL series positions produce empty entries vec in series view
+// ---------------------------------------------------------------------------
+
+/// Two owned editions in the same series, both with series_position = NULL.
+/// compute_series_views must set non_numeric = true and entries = [].
+/// format_series_text must include the series name.
+#[tokio::test]
+async fn test_gap11_null_positions_produce_empty_entries() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Insert 2 editions with series_name but series_position = NULL.
+    for (title, path) in &[("Null Pos Book 1", "gap11_1"), ("Null Pos Book 2", "gap11_2")] {
+        let meta = bookshelf_core::epub::EpubMeta {
+            title: Some(title.to_string()),
+            authors: Some("Gap11 Author".to_string()),
+            series_name: Some("Gap11 Series".to_string()),
+            series_position: None,
+            source_path: format!("/tmp/{path}.epub"),
+            ..Default::default()
+        };
+        db::upsert_edition(&pool, &meta).await.unwrap();
+    }
+
+    let editions = db::editions_with_series(&pool).await.unwrap();
+    let views = series::compute_series_views(&editions);
+
+    assert_eq!(views.len(), 1, "one series view must be produced");
+    let view = &views[0];
+    assert_eq!(view.series_name, "Gap11 Series");
+    assert!(view.non_numeric, "non_numeric must be true when all series_position are NULL");
+    assert!(view.entries.is_empty(), "entries must be empty when all series_position are NULL");
+
+    let text = series::format_series_text(&views);
+    assert!(
+        text.contains("Gap11 Series"),
+        "format_series_text must include the series name, got: {text}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// GAP-09: series_fill URL-encodes special characters in series names
+// ---------------------------------------------------------------------------
+
+/// A series_name containing parentheses and spaces ("The Witcher (Series)")
+/// must be URL-encoded before being used as the OL search query parameter.
+/// The wiremock path_regex checks the raw path; the encoded form uses %28 for
+/// '(' and %29 for ')'.
+#[tokio::test]
+async fn test_gap09_series_fill_url_encodes_series_name() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Insert an edition with a series name that contains special characters.
+    let meta = bookshelf_core::epub::EpubMeta {
+        title: Some("The Last Wish".to_string()),
+        authors: Some("Andrzej Sapkowski".to_string()),
+        series_name: Some("The Witcher (Series)".to_string()),
+        series_position: Some("1".to_string()),
+        source_path: "/tmp/gap09_witcher.epub".to_string(),
+        ..Default::default()
+    };
+    db::upsert_edition(&pool, &meta).await.unwrap();
+
+    let server = MockServer::start().await;
+
+    // The URL must contain the percent-encoded form of "The Witcher (Series)".
+    // urlencoding::encode replaces ' ' with '+' or '%20' and '(' with '%28', ')' with '%29'.
+    // Match by checking the query string contains the encoded parentheses.
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({ "docs": [] })))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    series::series_fill(&pool, &client, &server.uri(), None).await.unwrap();
+
+    // Verify the mock was called (URL encoding did not break the request).
+    let requests = server.received_requests().await.unwrap();
+    assert_eq!(requests.len(), 1, "OL search endpoint must be called exactly once");
+
+    // Verify the query string contains the URL-encoded parentheses.
+    let url = requests[0].url.as_str();
+    assert!(
+        url.contains("%28") || url.contains("%29"),
+        "URL must contain percent-encoded parentheses (%28 / %29) for series name, got: {url}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// GAP-10: series_fill substring filter — false-positive prevention
+// ---------------------------------------------------------------------------
+
+/// OL response contains docs for two different series; only the doc whose
+/// `series` field exactly matches the queried series name must be added.
+/// Docs tagged with a completely different series name must be excluded.
+///
+/// Note: the current `contains` substring filter means that a series name
+/// which is a *substring* of a different series name would incorrectly pass
+/// (known GAP-10 limitation). This test exercises the basic exclusion path
+/// using fully disjoint series names so no substring ambiguity exists.
+#[tokio::test]
+async fn test_series_fill_unrelated_series_excluded() {
+    let (pool, _tmp) = temp_pool().await;
+    let server = MockServer::start().await;
+
+    // Own book 1 of "Mistborn".
+    let meta = bookshelf_core::epub::EpubMeta {
+        title: Some("The Final Empire".to_string()),
+        authors: Some("Brandon Sanderson".to_string()),
+        series_name: Some("Mistborn".to_string()),
+        series_position: Some("1".to_string()),
+        source_path: "/tmp/mistborn_gap10.epub".to_string(),
+        ..Default::default()
+    };
+    db::upsert_edition(&pool, &meta).await.unwrap();
+
+    // OL returns two docs:
+    // - "The Well of Ascension" tagged ["Mistborn"] → correct match → must be added
+    // - "Elantris" tagged ["Elantris"] → completely different series → must be excluded
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path_regex(r"/search\.json"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "docs": [
+                    {
+                        "title": "The Well of Ascension",
+                        "author_name": ["Brandon Sanderson"],
+                        "series": ["Mistborn"],
+                        "key": "/works/OL_WOA",
+                        "number_of_pages_median": 763,
+                        "edition_count": 12
+                    },
+                    {
+                        "title": "Elantris",
+                        "author_name": ["Brandon Sanderson"],
+                        "series": ["Elantris"],
+                        "key": "/works/OL_EL",
+                        "number_of_pages_median": 496,
+                        "edition_count": 10
+                    }
+                ]
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    series::series_fill(&pool, &client, &server.uri(), None).await.unwrap();
+
+    let wants = db::list_want(&pool, None, None).await.unwrap();
+    let titles: Vec<_> = wants.iter().map(|w| w.title.as_str()).collect();
+
+    assert!(
+        titles.contains(&"The Well of Ascension"),
+        "correct-series match must be added to want list; got: {titles:?}"
+    );
+    assert!(
+        !titles.contains(&"Elantris"),
+        "doc from a different series must NOT be added to want list; got: {titles:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// GAP series_fill_no_fuzzy_false_positive: "Dune Messiah" must be added even
+// when "Dune" (same author, prefix-overlapping title) is already owned.
+// ---------------------------------------------------------------------------
+
+/// Regression test for the series_fill fuzzy false-positive bug.
+///
+/// Jaro-Winkler("dune", "dune messiah") ≈ 0.867, which is above DEDUP_THRESHOLD
+/// (0.85). When `is_already_owned` used fuzzy matching, "Dune Messiah" was
+/// incorrectly treated as already owned because it scored > threshold against the
+/// owned "Dune" edition — causing series_fill to skip the sequel entirely.
+///
+/// After the fix, series_fill uses `series_is_already_owned` (ISBN/work_id only).
+/// Since "Dune Messiah" has no ISBN overlap with owned "Dune", it must be added
+/// to the want list.
+#[tokio::test]
+async fn test_series_fill_no_fuzzy_false_positive_dune_messiah() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Own "Dune" #1 with an ISBN.
+    insert_series_edition_with_isbn(
+        &pool,
+        "Dune",
+        "Dune Chronicles",
+        "1",
+        "9780441013593",
+        "dune1",
+    )
+    .await;
+
+    let server = MockServer::start().await;
+
+    // OL returns #1 (owned) and #2 "Dune Messiah" (different ISBN — not owned).
+    // Both have the same author so fuzzy would incorrectly suppress the sequel.
+    let ol_response = serde_json::json!({
+        "docs": [
+            {
+                "title": "Dune",
+                "author_name": ["Frank Herbert"],
+                "isbn": ["9780441013593"],
+                "series": ["Dune Chronicles"],
+                "series_number": "1",
+                "key": "/works/OL_DUNE1",
+                "number_of_pages_median": 412,
+                "edition_count": 20
+            },
+            {
+                "title": "Dune Messiah",
+                "author_name": ["Frank Herbert"],
+                "isbn": ["9780441172696"],
+                "series": ["Dune Chronicles"],
+                "series_number": "2",
+                "key": "/works/OL_DUNE2",
+                "number_of_pages_median": 288,
+                "edition_count": 15
+            }
+        ]
+    });
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(ol_response))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    let inserted = series::series_fill(&pool, &client, &server.uri(), None)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        inserted, 1,
+        "series_fill must insert exactly 1 entry (Dune Messiah); got {inserted}"
+    );
+
+    let wants = db::list_want(&pool, None, None).await.unwrap();
+    let titles: Vec<&str> = wants.iter().map(|w| w.title.as_str()).collect();
+
+    assert!(
+        titles.contains(&"Dune Messiah"),
+        "Dune Messiah must be added to the want list even though 'Dune' (same author, \
+         title prefix overlap) is already owned; got: {titles:?}"
+    );
+    assert!(
+        !titles.contains(&"Dune"),
+        "owned 'Dune' must NOT appear in want list; got: {titles:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// GAP-26: format_series_text with a series where all entries are owned
+// (no gaps) — ensure no crash and output makes sense
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_format_series_text_all_owned_no_gaps() {
+    // Build a SeriesView manually with all entries owned.
+    let view = series::SeriesView {
+        series_name: "Dune Chronicles".to_string(),
+        entries: vec![
+            series::SeriesEntry {
+                series_name: "Dune Chronicles".to_string(),
+                position: "1".to_string(),
+                owned: true,
+            },
+            series::SeriesEntry {
+                series_name: "Dune Chronicles".to_string(),
+                position: "2".to_string(),
+                owned: true,
+            },
+        ],
+        non_numeric: false,
+    };
+
+    let text = series::format_series_text(&[view]);
+    assert!(text.contains("Dune Chronicles"), "series name must appear in output");
+    assert!(text.contains("owned"), "owned entries must be marked");
+    assert!(!text.contains("missing"), "no missing entries must appear when all are owned");
+}
+
+// ---------------------------------------------------------------------------
+// series_fill Strategy C: owned edition without ISBN is NOT re-added when
+// OL returns the same title WITHOUT an ISBN — fuzzy fallback suppresses it.
+// ---------------------------------------------------------------------------
+
+/// When an owned edition has no ISBN, Strategy C (fuzzy title+author within
+/// same series_name) must detect that a no-ISBN OL doc matches the owned
+/// edition and suppress the insertion.
+///
+/// Note: Strategy C only applies when the OL doc itself has NO ISBN.
+/// If the OL doc has an ISBN that did not match Strategy A/B, it is treated
+/// as a distinct edition (not suppressed by fuzzy) to prevent false positives
+/// like "Dune Messiah" being suppressed because "Dune" is owned.
+#[tokio::test]
+async fn test_series_fill_no_isbn_ol_doc_suppressed_by_strategy_c() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Insert owned "Children of Dune" (series #3) WITHOUT an ISBN.
+    // insert_series_edition sets authors = "Series Author".
+    insert_series_edition(&pool, "Children of Dune", "Dune Chronicles", "3", "cod_no_isbn").await;
+
+    let server = MockServer::start().await;
+
+    // OL returns "Children of Dune" WITHOUT an ISBN — same situation as an OL
+    // record that simply has no isbn data.  Strategy C must fuzzy-match the
+    // title+author against the owned no-ISBN edition and suppress insertion.
+    let ol_response = serde_json::json!({
+        "docs": [{
+            "title": "Children of Dune",
+            "author_name": ["Series Author"],
+            "series": ["Dune Chronicles"],
+            "series_number": "3",
+            "key": "/works/OL_COD",
+            "number_of_pages_median": 350,
+            "edition_count": 7
+        }]
+    });
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(ol_response))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    let inserted = series::series_fill(&pool, &client, &server.uri(), None)
+        .await
+        .unwrap();
+
+    // Strategy C: OL doc has no ISBN; fuzzy match against owned edition → suppressed.
+    assert_eq!(
+        inserted, 0,
+        "no-ISBN OL doc matching owned no-ISBN edition must be suppressed by Strategy C"
+    );
+
+    let wants = db::list_want(&pool, None, None).await.unwrap();
+    assert!(wants.is_empty(), "want list must be empty when owned edition is suppressed by fuzzy");
+}
+
+// ---------------------------------------------------------------------------
+// New test: series_fill finds series members for books with no ISBN in the DB
+// ---------------------------------------------------------------------------
+
+/// Covers the Mistborn scenario: the owned edition has series_name and
+/// series_position in the DB but NO ISBN.  The OL mock returns members via a
+/// series-specific search (some docs have no `series` field populated).
+///
+/// Expected outcome:
+/// - The owned book #1 is NOT re-added (Strategy C fuzzy fallback suppresses it).
+/// - The missing book #2 IS added to the want list.
+#[tokio::test]
+async fn test_series_fill_finds_members_without_isbn() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Insert "The Final Empire" (Mistborn #1) WITHOUT an ISBN.
+    // insert_series_edition sets authors = "Series Author".
+    insert_series_edition(
+        &pool,
+        "The Final Empire",
+        "Mistborn",
+        "1",
+        "mistborn1_no_isbn",
+    )
+    .await;
+
+    let server = MockServer::start().await;
+
+    // OL returns #1 and #2.  #1 has no `series` field (simulating an OL doc
+    // that lacks the populated field but was returned by a series:"..." query).
+    // #2 has the `series` field populated.  Both must pass the relaxed filter.
+    let ol_response = serde_json::json!({
+        "docs": [
+            {
+                "title": "The Final Empire",
+                "author_name": ["Series Author"],
+                // No `series` field — must pass relaxed filter (trusted query).
+                "series_number": "1",
+                "key": "/works/OL_MB1",
+                "number_of_pages_median": 541,
+                "edition_count": 16
+            },
+            {
+                "title": "The Well of Ascension",
+                "author_name": ["Series Author"],
+                "series": ["Mistborn"],
+                "series_number": "2",
+                "key": "/works/OL_MB2",
+                "number_of_pages_median": 763,
+                "edition_count": 13
+            }
+        ]
+    });
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(ol_response))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    let inserted = series::series_fill(&pool, &client, &server.uri(), None)
+        .await
+        .unwrap();
+
+    // Only "The Well of Ascension" (#2) must be inserted.
+    // "The Final Empire" (#1) is owned; Strategy C must suppress it via fuzzy match.
+    assert_eq!(
+        inserted, 1,
+        "only the missing #2 must be inserted; owned #1 must be suppressed by fuzzy fallback"
+    );
+
+    let wants = db::list_want(&pool, None, None).await.unwrap();
+    let titles: Vec<&str> = wants.iter().map(|w| w.title.as_str()).collect();
+
+    assert!(
+        titles.contains(&"The Well of Ascension"),
+        "missing #2 must appear in want list; got: {titles:?}"
+    );
+    assert!(
+        !titles.contains(&"The Final Empire"),
+        "owned #1 (no ISBN) must NOT appear in want list; got: {titles:?}"
+    );
+    assert_eq!(wants[0].source, "series_fill");
+    assert_eq!(wants[0].priority, 7);
+}
+
+// ---------------------------------------------------------------------------
+// AC-15: series_fill uses config_language as fallback when edition has no language
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_series_fill_uses_config_language_fallback() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Insert owned edition with no language field (language = NULL).
+    insert_series_edition(&pool, "Book 1", "Test Series Config Lang", "1", "cflang1").await;
+
+    let server = MockServer::start().await;
+
+    // OL returns 2 docs: one eng, one ger.
+    let ol_response = serde_json::json!({
+        "docs": [
+            {
+                "title": "Book Two English",
+                "author_name": ["Series Author"],
+                "isbn": [],
+                "series": ["Test Series Config Lang"],
+                "series_number": "2",
+                "key": "/works/OL_CFL1W",
+                "language": ["eng"]
+            },
+            {
+                "title": "Buch Zwei Deutsch",
+                "author_name": ["Series Author"],
+                "isbn": [],
+                "series": ["Test Series Config Lang"],
+                "series_number": "2",
+                "key": "/works/OL_CFL2W",
+                "language": ["ger"]
+            }
+        ]
+    });
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(ol_response))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    // config_language = Some("eng") — used as fallback since edition has no language.
+    let inserted = series::series_fill(&pool, &client, &server.uri(), Some("eng"))
+        .await
+        .unwrap();
+
+    // Only the English doc should be inserted; the German doc is filtered out.
+    assert_eq!(inserted, 1, "only the English-language work must be queued");
+
+    let wants = db::list_want(&pool, None, None).await.unwrap();
+    assert_eq!(wants.len(), 1);
+    assert_eq!(wants[0].title, "Book Two English", "only the English work must be in want list");
+}
+
+// ---------------------------------------------------------------------------
+// AC-15 (no filter): series_fill queues all docs when config_language is None
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_series_fill_config_language_none_no_filter() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Insert owned edition with no language field (language = NULL).
+    insert_series_edition(&pool, "Book 1", "Test Series No Filter", "1", "nofilt1").await;
+
+    let server = MockServer::start().await;
+
+    // OL returns 2 docs: one eng, one ger.
+    let ol_response = serde_json::json!({
+        "docs": [
+            {
+                "title": "Book Two English",
+                "author_name": ["Series Author"],
+                "isbn": [],
+                "series": ["Test Series No Filter"],
+                "series_number": "2",
+                "key": "/works/OL_NF1W",
+                "language": ["eng"]
+            },
+            {
+                "title": "Buch Zwei Deutsch",
+                "author_name": ["Series Author"],
+                "isbn": [],
+                "series": ["Test Series No Filter"],
+                "series_number": "2",
+                "key": "/works/OL_NF2W",
+                "language": ["ger"]
+            }
+        ]
+    });
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(ol_response))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    // config_language = None — no language filter applied at all.
+    let inserted = series::series_fill(&pool, &client, &server.uri(), None)
+        .await
+        .unwrap();
+
+    // Both docs must be queued.
+    assert_eq!(inserted, 2, "both works must be queued when config_language is None");
+
+    let wants = db::list_want(&pool, None, None).await.unwrap();
+    assert_eq!(wants.len(), 2);
+    let titles: Vec<&str> = wants.iter().map(|w| w.title.as_str()).collect();
+    assert!(titles.contains(&"Book Two English"));
+    assert!(titles.contains(&"Buch Zwei Deutsch"));
+}
+
+// ---------------------------------------------------------------------------
+// AC-16: edition-derived language takes precedence over config_language
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_series_fill_edition_language_overrides_config() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Insert owned edition with BCP-47 language "en" (converts to ISO 639-2 "eng").
+    let meta = EpubMeta {
+        title: Some("Book 1".to_string()),
+        authors: Some("Series Author".to_string()),
+        series_name: Some("Test Series".to_string()),
+        series_position: Some("1".to_string()),
+        language: Some("en".to_string()),
+        source_path: "/tmp/ac16_book1.epub".to_string(),
+        ..Default::default()
+    };
+    db::upsert_edition(&pool, &meta).await.unwrap();
+
+    let server = MockServer::start().await;
+
+    // OL returns 2 docs: one eng, one ger.
+    let ol_response = serde_json::json!({
+        "docs": [
+            {
+                "title": "Book Two English",
+                "author_name": ["Series Author"],
+                "isbn": [],
+                "series": ["Test Series"],
+                "series_number": "2",
+                "key": "/works/OL_AC16_ENG",
+                "language": ["eng"]
+            },
+            {
+                "title": "Buch Zwei Deutsch",
+                "author_name": ["Series Author"],
+                "isbn": [],
+                "series": ["Test Series"],
+                "series_number": "2",
+                "key": "/works/OL_AC16_GER",
+                "language": ["ger"]
+            }
+        ]
+    });
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(ol_response))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    // config_language = Some("ger"), but the edition says "en" → "eng".
+    // The or_else chain must use the edition-derived "eng" and ignore "ger".
+    let inserted = series::series_fill(&pool, &client, &server.uri(), Some("ger"))
+        .await
+        .unwrap();
+
+    // Only the English work must be queued; "ger" from config is ignored.
+    assert_eq!(inserted, 1, "edition-derived language must override config_language");
+
+    let wants = db::list_want(&pool, None, None).await.unwrap();
+    assert_eq!(wants.len(), 1);
+    assert_eq!(
+        wants[0].title, "Book Two English",
+        "only the English work must be in want list when edition language is 'en'"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// AC-17: config_language is a valid ISO 639-2 code whose BCP-47 counterpart
+// is not in the bcp47_to_iso639_2 table; series_fill must not error.
+//
+// The `bcp47_to_iso639_2` function is only used to convert edition language
+// tags (BCP-47 from the DB).  `config_language` is already ISO 639-2 and is
+// used directly as the filter value via the `or_else` fallback.  When
+// `config_language = Some("jpn")` and the edition has no language tag,
+// `target_lang` becomes `Some("jpn")`.  OL docs that carry no matching
+// language code are filtered out; the result is 0 insertions.
+// The important guarantee is that `series_fill` returns Ok (no crash).
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_series_fill_unmapped_config_language_no_filter() {
+    let (pool, _tmp) = temp_pool().await;
+
+    // Owned edition with no language field (language = NULL).
+    insert_series_edition(&pool, "Book 1", "Test Series Unmapped Lang", "1", "unmaplang1").await;
+
+    let server = MockServer::start().await;
+
+    // OL returns 2 docs: one tagged "eng", one tagged "ger".
+    // Neither matches "jpn", so both will be filtered by the language check.
+    let ol_response = serde_json::json!({
+        "docs": [
+            {
+                "title": "Book Two English",
+                "author_name": ["Series Author"],
+                "isbn": [],
+                "series": ["Test Series Unmapped Lang"],
+                "series_number": "2",
+                "key": "/works/OL_UML1W",
+                "language": ["eng"]
+            },
+            {
+                "title": "Buch Zwei Deutsch",
+                "author_name": ["Series Author"],
+                "isbn": [],
+                "series": ["Test Series Unmapped Lang"],
+                "series_number": "2",
+                "key": "/works/OL_UML2W",
+                "language": ["ger"]
+            }
+        ]
+    });
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/search\.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(ol_response))
+        .mount(&server)
+        .await;
+
+    let client = reqwest::Client::new();
+    // config_language = Some("jpn"): a valid ISO 639-2 code that is not a
+    // BCP-47 primary subtag in the bcp47_to_iso639_2 table.  The function
+    // must not panic or return Err — it must return Ok.
+    let result = series::series_fill(&pool, &client, &server.uri(), Some("jpn")).await;
+    assert!(
+        result.is_ok(),
+        "series_fill must not error when config_language is a valid ISO 639-2 code: {:?}",
+        result
+    );
+
+    // "jpn" does not match any of the returned docs' language arrays, so
+    // all docs are filtered out and nothing is inserted.
+    let inserted = result.unwrap();
+    assert_eq!(inserted, 0, "no works must be inserted when no OL doc matches the config language");
+
+    let wants = db::list_want(&pool, None, None).await.unwrap();
+    assert_eq!(wants.len(), 0, "want_list must be empty — no docs passed the language filter");
 }

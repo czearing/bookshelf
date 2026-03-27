@@ -245,7 +245,7 @@ async fn test_e2e_grab_dedup_full_pipeline() {
     // Step 2: Scan EPUBs into DB
     // ------------------------------------------------------------------
 
-    let scan_result = scan::scan_directory(&pool, epub_dir.path()).await.unwrap();
+    let scan_result = scan::scan_directory(&pool, epub_dir.path(), &["epub"]).await.unwrap();
     assert_eq!(scan_result.inserted, 5, "should have inserted 5 owned books");
     assert_eq!(scan_result.errors.len(), 0, "no scan errors expected");
 
@@ -280,7 +280,7 @@ async fn test_e2e_grab_dedup_full_pipeline() {
     // via ISBN match, so 6 unique want rows inserted.
     // imported counts updates (row 10 update) + new inserts.
     // The want list should have 6 entries.
-    let want_rows = db::list_want(&pool, None).await.unwrap();
+    let want_rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(
         want_rows.len(),
         6,
@@ -429,7 +429,7 @@ async fn test_e2e_goodreads_isbn_excel_format_stripped() {
     let (path, _file) = write_temp_csv(csv);
     want::import_goodreads_csv(&pool, &path, false).await.unwrap();
 
-    let rows = db::list_want(&pool, None).await.unwrap();
+    let rows = db::list_want(&pool, None, None).await.unwrap();
     assert_eq!(rows.len(), 1, "should have inserted 1 row");
     assert_eq!(
         rows[0].isbn13.as_deref(),
@@ -475,26 +475,19 @@ fn test_fuzzy_lies_of_locke_lamora_different_edition_matches() {
 }
 
 #[test]
-fn test_fuzzy_mistborn_final_empire_below_threshold() {
-    // Row 10 scenario: "Mistborn: The Final Empire" vs "The Final Empire".
-    // Score is 0.7674, below the 0.85 threshold — these do NOT fuzzy-match.
-    // Dedup happens via shared ISBN-13 (9780765350381) in find_existing_want instead.
-    let score = bookshelf_core::fuzzy::book_similarity(
-        "Mistborn: The Final Empire",
-        "Brandon Sanderson",
-        "The Final Empire",
-        "Brandon Sanderson",
-    );
+fn test_fuzzy_mistborn_final_empire_matches() {
+    // "Mistborn: The Final Empire" and "The Final Empire" are the same work —
+    // "The Final Empire" is the article-stripped subtitle suffix of the full title.
+    // is_subtitle_suffix("final empire", "mistborn: the final empire") → word-boundary hit.
+    // These MUST fuzzy-match so that follow/grab dedup works without needing ISBN.
     assert!(
-        score < bookshelf_core::fuzzy::DEDUP_THRESHOLD,
-        "Mistborn:The Final Empire vs The Final Empire must NOT fuzzy-match (score={score:.4} \
-         must be below {})",
-        bookshelf_core::fuzzy::DEDUP_THRESHOLD
-    );
-    // Document the actual score is approximately 0.7674
-    assert!(
-        (score - 0.767).abs() < 0.01,
-        "expected score ~0.767, got {score:.4}"
+        bookshelf_core::fuzzy::is_same_work(
+            "Mistborn: The Final Empire",
+            "Brandon Sanderson",
+            "The Final Empire",
+            "Brandon Sanderson",
+        ),
+        "Mistborn: The Final Empire and The Final Empire must be treated as the same work"
     );
 }
 
