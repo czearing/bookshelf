@@ -1,0 +1,1082 @@
+{
+ "books": [
+  {
+   "id": "m001",
+   "stratum": "modern_series",
+   "title": "Harry Potter and the Philosopher's Stone",
+   "authors": [
+    "J. K. Rowling"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Harry Potter",
+   "number": 1,
+   "style": 0
+  },
+  {
+   "id": "m002",
+   "stratum": "modern_series",
+   "title": "Harry Potter and the Chamber of Secrets",
+   "authors": [
+    "J. K. Rowling"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Harry Potter",
+   "number": 2,
+   "style": 1
+  },
+  {
+   "id": "m003",
+   "stratum": "modern_series",
+   "title": "Harry Potter and the Prisoner of Azkaban",
+   "authors": [
+    "J. K. Rowling"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Harry Potter",
+   "number": 3,
+   "style": 2
+  },
+  {
+   "id": "m004",
+   "stratum": "modern_series",
+   "title": "Harry Potter and the Goblet of Fire",
+   "authors": [
+    "J. K. Rowling"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Harry Potter",
+   "number": 4,
+   "style": 3
+  },
+  {
+   "id": "m005",
+   "stratum": "modern_series",
+   "title": "Harry Potter and the Order of the Phoenix",
+   "authors": [
+    "J. K. Rowling"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Harry Potter",
+   "number": 5,
+   "style": 4
+  },
+  {
+   "id": "m006",
+   "stratum": "modern_series",
+   "title": "Harry Potter and the Half-Blood Prince",
+   "authors": [
+    "J. K. Rowling"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Harry Potter",
+   "number": 6,
+   "style": 0
+  },
+  {
+   "id": "m007",
+   "stratum": "modern_series",
+   "title": "Harry Potter and the Deathly Hallows",
+   "authors": [
+    "J. K. Rowling"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Harry Potter",
+   "number": 7,
+   "style": 1
+  },
+  {
+   "id": "m008",
+   "stratum": "modern_series",
+   "title": "The Fellowship of the Ring",
+   "authors": [
+    "J. R. R. Tolkien"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Lord of the Rings",
+   "number": 1,
+   "style": 2
+  },
+  {
+   "id": "m009",
+   "stratum": "modern_series",
+   "title": "The Two Towers",
+   "authors": [
+    "J. R. R. Tolkien"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Lord of the Rings",
+   "number": 2,
+   "style": 3
+  },
+  {
+   "id": "m010",
+   "stratum": "modern_series",
+   "title": "The Return of the King",
+   "authors": [
+    "J. R. R. Tolkien"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Lord of the Rings",
+   "number": 3,
+   "style": 4
+  },
+  {
+   "id": "m011",
+   "stratum": "modern_standalone",
+   "title": "The Hobbit",
+   "authors": [
+    "J. R. R. Tolkien"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 0
+  },
+  {
+   "id": "m012",
+   "stratum": "modern_standalone",
+   "title": "The Silmarillion",
+   "authors": [
+    "J. R. R. Tolkien"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 2,
+   "style": 1
+  },
+  {
+   "id": "m013",
+   "stratum": "modern_series",
+   "title": "The Hunger Games",
+   "authors": [
+    "Suzanne Collins"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Hunger Games",
+   "number": 1,
+   "style": 2
+  },
+  {
+   "id": "m014",
+   "stratum": "modern_series",
+   "title": "Catching Fire",
+   "authors": [
+    "Suzanne Collins"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Hunger Games",
+   "number": 2,
+   "style": 3
+  },
+  {
+   "id": "m015",
+   "stratum": "modern_series",
+   "title": "Mockingjay",
+   "authors": [
+    "Suzanne Collins"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Hunger Games",
+   "number": 3,
+   "style": 4
+  },
+  {
+   "id": "m016",
+   "stratum": "modern_series",
+   "title": "Dune",
+   "authors": [
+    "Frank Herbert"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Dune",
+   "number": 1,
+   "style": 0
+  },
+  {
+   "id": "m017",
+   "stratum": "modern_series",
+   "title": "Dune Messiah",
+   "authors": [
+    "Frank Herbert"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Dune",
+   "number": 2,
+   "style": 1
+  },
+  {
+   "id": "m018",
+   "stratum": "modern_series",
+   "title": "Children of Dune",
+   "authors": [
+    "Frank Herbert"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Dune",
+   "number": 3,
+   "style": 2
+  },
+  {
+   "id": "m019",
+   "stratum": "modern_series",
+   "title": "God Emperor of Dune",
+   "authors": [
+    "Frank Herbert"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Dune",
+   "number": 4,
+   "style": 3
+  },
+  {
+   "id": "m020",
+   "stratum": "modern_series",
+   "title": "A Game of Thrones",
+   "authors": [
+    "George R. R. Martin"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "A Song of Ice and Fire",
+   "number": 1,
+   "style": 4
+  },
+  {
+   "id": "m021",
+   "stratum": "modern_series",
+   "title": "A Clash of Kings",
+   "authors": [
+    "George R. R. Martin"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "A Song of Ice and Fire",
+   "number": 2,
+   "style": 0
+  },
+  {
+   "id": "m022",
+   "stratum": "modern_series",
+   "title": "A Storm of Swords",
+   "authors": [
+    "George R. R. Martin"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "A Song of Ice and Fire",
+   "number": 3,
+   "style": 1
+  },
+  {
+   "id": "m023",
+   "stratum": "modern_series",
+   "title": "A Feast for Crows",
+   "authors": [
+    "George R. R. Martin"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "A Song of Ice and Fire",
+   "number": 4,
+   "style": 2
+  },
+  {
+   "id": "m024",
+   "stratum": "modern_series",
+   "title": "A Dance with Dragons",
+   "authors": [
+    "George R. R. Martin"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "A Song of Ice and Fire",
+   "number": 5,
+   "style": 3
+  },
+  {
+   "id": "m025",
+   "stratum": "modern_series",
+   "title": "The Lion, the Witch and the Wardrobe",
+   "authors": [
+    "C. S. Lewis"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Chronicles of Narnia",
+   "number": 1,
+   "style": 4
+  },
+  {
+   "id": "m026",
+   "stratum": "modern_series",
+   "title": "Prince Caspian",
+   "authors": [
+    "C. S. Lewis"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Chronicles of Narnia",
+   "number": 2,
+   "style": 0
+  },
+  {
+   "id": "m027",
+   "stratum": "modern_series",
+   "title": "The Voyage of the Dawn Treader",
+   "authors": [
+    "C. S. Lewis"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Chronicles of Narnia",
+   "number": 3,
+   "style": 1
+  },
+  {
+   "id": "m028",
+   "stratum": "modern_series",
+   "title": "The Silver Chair",
+   "authors": [
+    "C. S. Lewis"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Chronicles of Narnia",
+   "number": 4,
+   "style": 2
+  },
+  {
+   "id": "m029",
+   "stratum": "modern_series",
+   "title": "The Horse and His Boy",
+   "authors": [
+    "C. S. Lewis"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Chronicles of Narnia",
+   "number": 5,
+   "style": 3
+  },
+  {
+   "id": "m030",
+   "stratum": "modern_series",
+   "title": "The Magician's Nephew",
+   "authors": [
+    "C. S. Lewis"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Chronicles of Narnia",
+   "number": 6,
+   "style": 4
+  },
+  {
+   "id": "m031",
+   "stratum": "modern_series",
+   "title": "The Last Battle",
+   "authors": [
+    "C. S. Lewis"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Chronicles of Narnia",
+   "number": 7,
+   "style": 0
+  },
+  {
+   "id": "m032",
+   "stratum": "modern_series",
+   "title": "Northern Lights",
+   "authors": [
+    "Philip Pullman"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "His Dark Materials",
+   "number": 1,
+   "style": 1
+  },
+  {
+   "id": "m033",
+   "stratum": "modern_series",
+   "title": "The Subtle Knife",
+   "authors": [
+    "Philip Pullman"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "His Dark Materials",
+   "number": 2,
+   "style": 2
+  },
+  {
+   "id": "m034",
+   "stratum": "modern_series",
+   "title": "The Amber Spyglass",
+   "authors": [
+    "Philip Pullman"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "His Dark Materials",
+   "number": 3,
+   "style": 3
+  },
+  {
+   "id": "m035",
+   "stratum": "modern_series",
+   "title": "The Lightning Thief",
+   "authors": [
+    "Rick Riordan"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Percy Jackson",
+   "number": 1,
+   "style": 4
+  },
+  {
+   "id": "m036",
+   "stratum": "modern_series",
+   "title": "The Sea of Monsters",
+   "authors": [
+    "Rick Riordan"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Percy Jackson",
+   "number": 2,
+   "style": 0
+  },
+  {
+   "id": "m037",
+   "stratum": "modern_series",
+   "title": "The Titan's Curse",
+   "authors": [
+    "Rick Riordan"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Percy Jackson",
+   "number": 3,
+   "style": 1
+  },
+  {
+   "id": "m038",
+   "stratum": "modern_series",
+   "title": "The Battle of the Labyrinth",
+   "authors": [
+    "Rick Riordan"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Percy Jackson",
+   "number": 4,
+   "style": 2
+  },
+  {
+   "id": "m039",
+   "stratum": "modern_series",
+   "title": "The Last Olympian",
+   "authors": [
+    "Rick Riordan"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Percy Jackson",
+   "number": 5,
+   "style": 3
+  },
+  {
+   "id": "m040",
+   "stratum": "modern_series",
+   "title": "Foundation",
+   "authors": [
+    "Isaac Asimov"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Foundation",
+   "number": 1,
+   "style": 4
+  },
+  {
+   "id": "m041",
+   "stratum": "modern_series",
+   "title": "Foundation and Empire",
+   "authors": [
+    "Isaac Asimov"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Foundation",
+   "number": 2,
+   "style": 0
+  },
+  {
+   "id": "m042",
+   "stratum": "modern_series",
+   "title": "Second Foundation",
+   "authors": [
+    "Isaac Asimov"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Foundation",
+   "number": 3,
+   "style": 1
+  },
+  {
+   "id": "m043",
+   "stratum": "modern_series",
+   "title": "The Colour of Magic",
+   "authors": [
+    "Terry Pratchett"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Discworld",
+   "number": 1,
+   "style": 2
+  },
+  {
+   "id": "m044",
+   "stratum": "modern_series",
+   "title": "Mort",
+   "authors": [
+    "Terry Pratchett"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Discworld",
+   "number": 2,
+   "style": 3
+  },
+  {
+   "id": "m045",
+   "stratum": "modern_series",
+   "title": "Guards! Guards!",
+   "authors": [
+    "Terry Pratchett"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Discworld",
+   "number": 3,
+   "style": 4
+  },
+  {
+   "id": "m046",
+   "stratum": "modern_series",
+   "title": "Going Postal",
+   "authors": [
+    "Terry Pratchett"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Discworld",
+   "number": 4,
+   "style": 0
+  },
+  {
+   "id": "m047",
+   "stratum": "modern_series",
+   "title": "The Girl with the Dragon Tattoo",
+   "authors": [
+    "Stieg Larsson"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Millennium",
+   "number": 1,
+   "style": 1
+  },
+  {
+   "id": "m048",
+   "stratum": "modern_series",
+   "title": "The Girl Who Played with Fire",
+   "authors": [
+    "Stieg Larsson"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Millennium",
+   "number": 2,
+   "style": 2
+  },
+  {
+   "id": "m049",
+   "stratum": "modern_series",
+   "title": "Divergent",
+   "authors": [
+    "Veronica Roth"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Divergent",
+   "number": 1,
+   "style": 3
+  },
+  {
+   "id": "m050",
+   "stratum": "modern_series",
+   "title": "Insurgent",
+   "authors": [
+    "Veronica Roth"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Divergent",
+   "number": 2,
+   "style": 4
+  },
+  {
+   "id": "m051",
+   "stratum": "modern_series",
+   "title": "Allegiant",
+   "authors": [
+    "Veronica Roth"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Divergent",
+   "number": 3,
+   "style": 0
+  },
+  {
+   "id": "m052",
+   "stratum": "modern_series",
+   "title": "The Eye of the World",
+   "authors": [
+    "Robert Jordan"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Wheel of Time",
+   "number": 1,
+   "style": 1
+  },
+  {
+   "id": "m053",
+   "stratum": "modern_series",
+   "title": "The Great Hunt",
+   "authors": [
+    "Robert Jordan"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Wheel of Time",
+   "number": 2,
+   "style": 2
+  },
+  {
+   "id": "m054",
+   "stratum": "modern_series",
+   "title": "The Dragon Reborn",
+   "authors": [
+    "Robert Jordan"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "The Wheel of Time",
+   "number": 3,
+   "style": 3
+  },
+  {
+   "id": "m055",
+   "stratum": "modern_series",
+   "title": "Ender's Game",
+   "authors": [
+    "Orson Scott Card"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Ender's Game",
+   "number": 1,
+   "style": 4
+  },
+  {
+   "id": "m056",
+   "stratum": "modern_series",
+   "title": "Speaker for the Dead",
+   "authors": [
+    "Orson Scott Card"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": "Ender's Game",
+   "number": 2,
+   "style": 0
+  },
+  {
+   "id": "m057",
+   "stratum": "modern_standalone",
+   "title": "The Great Gatsby",
+   "authors": [
+    "F. Scott Fitzgerald"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 1
+  },
+  {
+   "id": "m058",
+   "stratum": "modern_standalone",
+   "title": "Nineteen Eighty-Four",
+   "authors": [
+    "George Orwell"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 2
+  },
+  {
+   "id": "m059",
+   "stratum": "modern_standalone",
+   "title": "Animal Farm",
+   "authors": [
+    "George Orwell"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 2,
+   "style": 3
+  },
+  {
+   "id": "m060",
+   "stratum": "modern_standalone",
+   "title": "To Kill a Mockingbird",
+   "authors": [
+    "Harper Lee"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 4
+  },
+  {
+   "id": "m061",
+   "stratum": "modern_standalone",
+   "title": "Catch-22",
+   "authors": [
+    "Joseph Heller"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 0
+  },
+  {
+   "id": "m062",
+   "stratum": "modern_standalone",
+   "title": "The Hitchhiker's Guide to the Galaxy",
+   "authors": [
+    "Douglas Adams"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 1
+  },
+  {
+   "id": "m063",
+   "stratum": "modern_standalone",
+   "title": "The Handmaid's Tale",
+   "authors": [
+    "Margaret Atwood"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 2
+  },
+  {
+   "id": "m064",
+   "stratum": "modern_standalone",
+   "title": "Slaughterhouse-Five",
+   "authors": [
+    "Kurt Vonnegut"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 3
+  },
+  {
+   "id": "m065",
+   "stratum": "modern_standalone",
+   "title": "The Catcher in the Rye",
+   "authors": [
+    "J. D. Salinger"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 4
+  },
+  {
+   "id": "m066",
+   "stratum": "modern_standalone",
+   "title": "The Da Vinci Code",
+   "authors": [
+    "Dan Brown"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 0
+  },
+  {
+   "id": "m067",
+   "stratum": "modern_standalone",
+   "title": "Angels and Demons",
+   "authors": [
+    "Dan Brown"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 2,
+   "style": 1
+  },
+  {
+   "id": "m068",
+   "stratum": "modern_standalone",
+   "title": "Gone Girl",
+   "authors": [
+    "Gillian Flynn"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 2
+  },
+  {
+   "id": "m069",
+   "stratum": "modern_standalone",
+   "title": "The Shining",
+   "authors": [
+    "Stephen King"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 3
+  },
+  {
+   "id": "m070",
+   "stratum": "modern_standalone",
+   "title": "It",
+   "authors": [
+    "Stephen King"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 2,
+   "style": 4
+  },
+  {
+   "id": "m071",
+   "stratum": "modern_standalone",
+   "title": "Misery",
+   "authors": [
+    "Stephen King"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 3,
+   "style": 0
+  },
+  {
+   "id": "m072",
+   "stratum": "modern_standalone",
+   "title": "Jurassic Park",
+   "authors": [
+    "Michael Crichton"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 1
+  },
+  {
+   "id": "m073",
+   "stratum": "modern_standalone",
+   "title": "The Martian",
+   "authors": [
+    "Andy Weir"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 2
+  },
+  {
+   "id": "m074",
+   "stratum": "modern_standalone",
+   "title": "The Fault in Our Stars",
+   "authors": [
+    "John Green"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 3
+  },
+  {
+   "id": "m075",
+   "stratum": "modern_standalone",
+   "title": "American Gods",
+   "authors": [
+    "Neil Gaiman"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 4
+  },
+  {
+   "id": "m076",
+   "stratum": "modern_standalone",
+   "title": "Neverwhere",
+   "authors": [
+    "Neil Gaiman"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 2,
+   "style": 0
+  },
+  {
+   "id": "m077",
+   "stratum": "modern_standalone",
+   "title": "Fahrenheit 451",
+   "authors": [
+    "Ray Bradbury"
+   ],
+   "languages": [
+    "en"
+   ],
+   "series": null,
+   "number": 1,
+   "style": 1
+  }
+ ]
+}

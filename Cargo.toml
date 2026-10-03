@@ -2,5 +2,6 @@
 members = [
     "crates/bookshelf-core",
     "crates/bookshelf-cli",
+    "crates/bookshelf-identify",
 ]
 resolver = "2"

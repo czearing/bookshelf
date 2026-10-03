@@ -1,0 +1,342 @@
+{
+ "books": [
+  {
+   "id": "1368acde6d251adcbad75e03c404d08b",
+   "stratum": "libgen_lang_fr",
+   "title": "Vingt mille lieues sous les mers",
+   "authors": [
+    "Jules Verne"
+   ],
+   "languages": [
+    "fr"
+   ],
+   "source_title": "Vingt mille lieues sous les mers",
+   "source_authors": "Verne, Jules"
+  },
+  {
+   "id": "803abf4ec2decf930dd99316afa06857",
+   "stratum": "libgen_lang_fr",
+   "title": "Vingt mille lieues sous les mers",
+   "authors": [
+    "Jules Verne"
+   ],
+   "languages": [
+    "fr"
+   ],
+   "source_title": "Vingt mille lieues sous les mers",
+   "source_authors": "Verne, Jules"
+  },
+  {
+   "id": "68e966edc9802c29657d7d7312e09d32",
+   "stratum": "libgen_lang_fr",
+   "title": "Les Miserables",
+   "authors": [
+    "Victor Hugo"
+   ],
+   "languages": [
+    "fr"
+   ],
+   "source_title": "Les Mis\u00e9rables - Tome 1 (Poche)",
+   "source_authors": "Hugo, Victor"
+  },
+  {
+   "id": "881a83b6dd7b1044f2f6899a22221616",
+   "stratum": "libgen_lang_fr",
+   "title": "Les Miserables",
+   "authors": [
+    "Victor Hugo"
+   ],
+   "languages": [
+    "fr"
+   ],
+   "source_title": "Les Mis\u00e9rables 1",
+   "source_authors": "Hugo, Victor"
+  },
+  {
+   "id": "a5335ba628c14955358c5de0200fc271",
+   "stratum": "libgen_lang_fr",
+   "title": "Madame Bovary",
+   "authors": [
+    "Gustave Flaubert"
+   ],
+   "languages": [
+    "fr"
+   ],
+   "source_title": "Madame Bovary",
+   "source_authors": "Flaubert, Gustave"
+  },
+  {
+   "id": "afd7ae0ee08082e83cffc0c74bc117dc",
+   "stratum": "libgen_lang_fr",
+   "title": "Madame Bovary",
+   "authors": [
+    "Gustave Flaubert"
+   ],
+   "languages": [
+    "fr"
+   ],
+   "source_title": "Madame Bovary",
+   "source_authors": "Flaubert, Gustave"
+  },
+  {
+   "id": "c596fd1b052f459eded731b11194034e",
+   "stratum": "libgen_lang_fr",
+   "title": "Germinal",
+   "authors": [
+    "Emile Zola"
+   ],
+   "languages": [
+    "fr"
+   ],
+   "source_title": "Germinal",
+   "source_authors": "Zola, Emile"
+  },
+  {
+   "id": "8b14bc416c9f0c1b277a540fb9862313",
+   "stratum": "libgen_lang_fr",
+   "title": "Germinal",
+   "authors": [
+    "Emile Zola"
+   ],
+   "languages": [
+    "fr"
+   ],
+   "source_title": "Germinal",
+   "source_authors": "Zola, \u00c9mile"
+  },
+  {
+   "id": "8e2b18fffd1f1421f9812aa09488e4ec",
+   "stratum": "libgen_lang_de",
+   "title": "Faust",
+   "authors": [
+    "Johann Wolfgang von Goethe"
+   ],
+   "languages": [
+    "de"
+   ],
+   "source_title": "Faust - Der Trag\u00f6die erster Teil",
+   "source_authors": "Goethe, Johann Wolfgang von"
+  },
+  {
+   "id": "b2052c923326802b899349e3af058f22",
+   "stratum": "libgen_lang_de",
+   "title": "Faust",
+   "authors": [
+    "Johann Wolfgang von Goethe"
+   ],
+   "languages": [
+    "de"
+   ],
+   "source_title": "Faust - Der Trag\u00f6die zweiter Teil",
+   "source_authors": "Goethe, Johann Wolfgang von"
+  },
+  {
+   "id": "3143854ef32ed00a04e0c81c766c289b",
+   "stratum": "libgen_lang_de",
+   "title": "Die Verwandlung",
+   "authors": [
+    "Franz Kafka"
+   ],
+   "languages": [
+    "de"
+   ],
+   "source_title": "Die Verwandlung",
+   "source_authors": "Kafka, Franz"
+  },
+  {
+   "id": "acfc390155af2746e069d37457fe1008",
+   "stratum": "libgen_lang_de",
+   "title": "Die Verwandlung",
+   "authors": [
+    "Franz Kafka"
+   ],
+   "languages": [
+    "de"
+   ],
+   "source_title": "Die Verwandlung",
+   "source_authors": "Kafka, Franz"
+  },
+  {
+   "id": "a241bcd2599467ecf8e6748de6054d36",
+   "stratum": "libgen_lang_de",
+   "title": "Also sprach Zarathustra",
+   "authors": [
+    "Friedrich Nietzsche"
+   ],
+   "languages": [
+    "de"
+   ],
+   "source_title": "Also sprach Zarathustra",
+   "source_authors": "Nietzsche, F"
+  },
+  {
+   "id": "2a9e6de74aa6d46f866599a67a8c032d",
+   "stratum": "libgen_lang_de",
+   "title": "Also sprach Zarathustra",
+   "authors": [
+    "Friedrich Nietzsche"
+   ],
+   "languages": [
+    "de"
+   ],
+   "source_title": "Also sprach Zarathustra",
+   "source_authors": "Nietzsche, Friedrich Wilhelm"
+  },
+  {
+   "id": "fc8ee3e8079c072aff9f4173f67fb36a",
+   "stratum": "libgen_lang_es",
+   "title": "Don Quijote de la Mancha",
+   "authors": [
+    "Miguel de Cervantes"
+   ],
+   "languages": [
+    "es"
+   ],
+   "source_title": "Don Quijote de la Mancha (versi\u00f3n de Jos\u00e9 Luis Gim\u00e9nez-Front\u00edn)",
+   "source_authors": "Cervantes, Miguel de;Gim\u00e9nez-Front\u00edn, Jos\u00e9 Luis"
+  },
+  {
+   "id": "e3928ee9f5ac6b4c7ae0f77a1679fcaf",
+   "stratum": "libgen_lang_es",
+   "title": "Don Quijote de la Mancha",
+   "authors": [
+    "Miguel de Cervantes"
+   ],
+   "languages": [
+    "es"
+   ],
+   "source_title": "Don Quijote de la Mancha (versi\u00f3n de Jos\u00e9 Luis Gim\u00e9nez-Front\u00edn)",
+   "source_authors": "Cervantes, Miguel de & Gim\u00e9nez-Front\u00edn, Jos\u00e9 Luis"
+  },
+  {
+   "id": "d9a6c255321f084bbf2dfa2cca037cca",
+   "stratum": "libgen_lang_es",
+   "title": "Marianela",
+   "authors": [
+    "Benito Perez Galdos"
+   ],
+   "languages": [
+    "es"
+   ],
+   "source_title": "Marianela",
+   "source_authors": "Benito P\u00e9rez Gald\u00f3s"
+  },
+  {
+   "id": "88b893351bb62f292612b2ac71bfe4fd",
+   "stratum": "libgen_lang_es",
+   "title": "Marianela",
+   "authors": [
+    "Benito Perez Galdos"
+   ],
+   "languages": [
+    "es"
+   ],
+   "source_title": "Marianela (Ilustrado) (Ilustrado)",
+   "source_authors": "Benito P\u00e9rez Gald\u00f3s"
+  },
+  {
+   "id": "0c449b88628404981c166c887b22777d",
+   "stratum": "libgen_lang_it",
+   "title": "La Divina Commedia",
+   "authors": [
+    "Dante Alighieri"
+   ],
+   "languages": [
+    "it"
+   ],
+   "source_title": "La divina commedia di Dante Alighieri, gi\u00e0 ridotta a miglior lezione dagli Accademici della Crusca; ed ora accresciuta di un doppio rimario, e di tre indici copiosissimi, per opera del signor Gio. Antonio Volpi ... Il tutto distribuito in tre volumi, ..: Volume terzo che abbraccia i soliti argomenti, e le allegorie sopra ogni canto del poema di Dante Alighieri; e di pi\u00f9 tre indici ricchissimi, che spiegano tutte le cose difficili, e tutte l'erudizioni di esso poema, e tengono la vece d'un'intero comento; composti con somma diligenza dal sig. Gio. Antonio Volpi",
+   "source_authors": "Alighieri Dante"
+  },
+  {
+   "id": "61eda8bf68560ff5e39008ed0222847a",
+   "stratum": "libgen_lang_it",
+   "title": "La Divina Commedia",
+   "authors": [
+    "Dante Alighieri"
+   ],
+   "languages": [
+    "it"
+   ],
+   "source_title": "La Divina Commedia Di Dante Alighieri: Gi\u00e0 Ridotta a Miglior Lezione Dagli Accademici Della Crusca",
+   "source_authors": "Alighieri, Dante ; Bruni, Leonardo ; Noci, Carlo ; Rossi, Bastiano De\u2019"
+  },
+  {
+   "id": "fbc8afc7937a38fb4fc3ef4a8b07d671",
+   "stratum": "libgen_lang_it",
+   "title": "I promessi sposi",
+   "authors": [
+    "Alessandro Manzoni"
+   ],
+   "languages": [
+    "it"
+   ],
+   "source_title": "Brani inediti dei Promessi Sposi. Opere di Alessando Manzoni vol. 2: parte 2",
+   "source_authors": "Manzoni, Alessandro"
+  },
+  {
+   "id": "032fb3143229ff9e85861132cd4bfcdb",
+   "stratum": "libgen_lang_it",
+   "title": "I promessi sposi",
+   "authors": [
+    "Alessandro Manzoni"
+   ],
+   "languages": [
+    "it"
+   ],
+   "source_title": "I promessi sposi. Opere di Alessando Manzoni, vol. 1",
+   "source_authors": "Manzoni, Alessandro"
+  },
+  {
+   "id": "54dd396ae2cd6eed152e6e6ded2ba988",
+   "stratum": "libgen_lang_pt",
+   "title": "Dom Casmurro",
+   "authors": [
+    "Machado de Assis"
+   ],
+   "languages": [
+    "pt"
+   ],
+   "source_title": "Dom Casmurro",
+   "source_authors": "Assis, Machado De"
+  },
+  {
+   "id": "a4ac0ecb92af5baff071e14f0fd69449",
+   "stratum": "libgen_lang_pt",
+   "title": "Dom Casmurro",
+   "authors": [
+    "Machado de Assis"
+   ],
+   "languages": [
+    "pt"
+   ],
+   "source_title": "Dom Casmurro",
+   "source_authors": "Assis, Machado de"
+  },
+  {
+   "id": "932d3b6f28b936b4b00953b7b4885171",
+   "stratum": "libgen_lang_nl",
+   "title": "Max Havelaar",
+   "authors": [
+    "Multatuli"
+   ],
+   "languages": [
+    "nl"
+   ],
+   "source_title": "Max Havelaar Of De Koffieveilingen Der Nederlandsche Handelsmaatschappy",
+   "source_authors": "Multatuli,"
+  },
+  {
+   "id": "9c9249111beaa9c26ad400324ada3dae",
+   "stratum": "libgen_lang_nl",
+   "title": "Max Havelaar",
+   "authors": [
+    "Multatuli"
+   ],
+   "languages": [
+    "nl"
+   ],
+   "source_title": "Max Havelaar Of de koffieveilingen der Nederlandsche Handelsmaatschappy",
+   "source_authors": "Multatuli,"
+  }
+ ]
+}

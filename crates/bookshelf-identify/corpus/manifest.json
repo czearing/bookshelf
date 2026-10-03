@@ -1,0 +1,1611 @@
+{
+  "books": [
+    {
+      "authors": [
+        "Austen, Jane"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/1342.epub3.images",
+      "id": 1342,
+      "languages": [
+        "en"
+      ],
+      "sha256": "d401ad6b118e84d01b8dd1a3d034fd41784feb14c50f1f7a0fc17f3263fa8e9f",
+      "stratum": "en_popular",
+      "title": "Pride and Prejudice",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Melville, Herman"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/2701.epub3.images",
+      "id": 2701,
+      "languages": [
+        "en"
+      ],
+      "sha256": "21078430c9d034326635f4d57ce436c278956b148357903973aaee949a4598ec",
+      "stratum": "en_popular",
+      "title": "Moby Dick; Or, The Whale",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Homer"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/1727.epub3.images",
+      "id": 1727,
+      "languages": [
+        "en"
+      ],
+      "sha256": "bb40f821e2866690daafd8e5ca044b12f60c70ffd449ba2fe1b2a91fa76a9930",
+      "stratum": "en_popular",
+      "title": "The Odyssey: Rendered into English prose for the use of those who cannot read the original",
+      "translators": [
+        "Butler, Samuel"
+      ]
+    },
+    {
+      "authors": [
+        "Doyle, Arthur Conan"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/1661.epub3.images",
+      "id": 1661,
+      "languages": [
+        "en"
+      ],
+      "sha256": "310ddf29f2b98b870b0e970061d236c9ce7c65163e0e172c254a1db3d070d3f4",
+      "stratum": "en_popular",
+      "title": "The Adventures of Sherlock Holmes",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Radcliffe, Ann Ward"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/3268.epub3.images",
+      "id": 3268,
+      "languages": [
+        "en"
+      ],
+      "sha256": "1f0811ef399c253384d6f2d3c1d0da582b0e438050588e195683eb7fc93b4f1e",
+      "stratum": "en_popular",
+      "title": "The Mysteries of Udolpho",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Shakespeare, William"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/1513.epub3.images",
+      "id": 1513,
+      "languages": [
+        "en"
+      ],
+      "sha256": "0dea6a849392a1e669f368f7ab7bd746fc4473418453fb956343ae297acf4412",
+      "stratum": "en_popular",
+      "title": "Romeo and Juliet",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Forster, E. M. (Edward Morgan)"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/2641.epub3.images",
+      "id": 2641,
+      "languages": [
+        "en"
+      ],
+      "sha256": "0df18910b8ff71b0ccc27eddfa5c1748df54fab30b5397e5092feca75c8fdaa6",
+      "stratum": "en_popular",
+      "title": "A Room with a View",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Mérimée, Prosper"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/2465.epub3.images",
+      "id": 2465,
+      "languages": [
+        "en"
+      ],
+      "sha256": "8e756845acc9aa4f47146aa14d11a70926bd3ded17b42d6a9384cf3298d8d6e7",
+      "stratum": "en_popular",
+      "title": "Carmen",
+      "translators": [
+        "Loyd, Mary, Lady"
+      ]
+    },
+    {
+      "authors": [
+        "Carroll, Lewis"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/11.epub3.images",
+      "id": 11,
+      "languages": [
+        "en"
+      ],
+      "sha256": "4f81245d31380ac1d6eafb9a321e3691369bc70985736ae4bccf849a4f784036",
+      "stratum": "en_popular",
+      "title": "Alice's Adventures in Wonderland",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Stoker, Bram"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/345.epub3.images",
+      "id": 345,
+      "languages": [
+        "en"
+      ],
+      "sha256": "be5b12d762ceaacab5bfd0c1e510c8d36a0498cdde43790d6575d198fa9cd94d",
+      "stratum": "en_popular",
+      "title": "Dracula",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Hume, Fergus"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/2868.epub3.images",
+      "id": 2868,
+      "languages": [
+        "en"
+      ],
+      "sha256": "72f14471bd799f7544f996e17dea5072c885e1b3f3ea9231e6bf58659df754bf",
+      "stratum": "en_popular",
+      "title": "The Green Mummy",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Stevenson, Robert Louis"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/43.epub3.images",
+      "id": 43,
+      "languages": [
+        "en"
+      ],
+      "sha256": "0bf449baafba3d997d97c434de1c2321942d9f719837d4f374784c41b98edce7",
+      "stratum": "en_popular",
+      "title": "The strange case of Dr. Jekyll and Mr. Hyde",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Shakespeare, William"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/100.epub3.images",
+      "id": 100,
+      "languages": [
+        "en"
+      ],
+      "sha256": "67099ade8e4f912bc0c82ba5f02c44b8bdc9dd725bdb8640f2746adcae6d2199",
+      "stratum": "en_popular",
+      "title": "The Complete Works of William Shakespeare",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Brontë, Charlotte"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/1260.epub3.images",
+      "id": 1260,
+      "languages": [
+        "en"
+      ],
+      "sha256": "7dbcc5804e9875f4c15c4b54f14168a0d19ab5b155d42acbbfc3d309d889db0b",
+      "stratum": "en_popular",
+      "title": "Jane Eyre: An Autobiography",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Chambers, Robert W. (Robert William)"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/8492.epub3.images",
+      "id": 8492,
+      "languages": [
+        "en"
+      ],
+      "sha256": "dd8c89934c78c8d15608398fc09c7335f8a89d4c65b9e61081dafe7c93197668",
+      "stratum": "en_popular",
+      "title": "The King in Yellow",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Dostoyevsky, Fyodor"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/2554.epub3.images",
+      "id": 2554,
+      "languages": [
+        "en"
+      ],
+      "sha256": "5e2b1d68b0aaac5216514d632b5135e9a8dc5e70facea0961b9a1056e5590ecd",
+      "stratum": "en_popular",
+      "title": "Crime and Punishment",
+      "translators": [
+        "Garnett, Constance"
+      ]
+    },
+    {
+      "authors": [
+        "Eliot, George"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/145.epub3.images",
+      "id": 145,
+      "languages": [
+        "en"
+      ],
+      "sha256": "6e49e3e85a0a0aecfc074366e287240b236bc262bdd2bbb35693ecac7af0a1e2",
+      "stratum": "en_popular",
+      "title": "Middlemarch",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Chesterton, G. K. (Gilbert Keith)"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/1695.epub3.images",
+      "id": 1695,
+      "languages": [
+        "en"
+      ],
+      "sha256": "bb6e2b2daeb63dacb91674daa98e153670a3f2ed9105cf4f5b0c534764153a85",
+      "stratum": "en_popular",
+      "title": "The Man Who Was Thursday: A Nightmare",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Dickens, Charles"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/564.epub3.images",
+      "id": 564,
+      "languages": [
+        "en"
+      ],
+      "sha256": "12f64834c6fa5b3102efbec9aa76a5207e013833d5bcaa149c961dbfaea55ac1",
+      "stratum": "en_popular",
+      "title": "The Mystery of Edwin Drood",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Shelley, Mary Wollstonecraft"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/84.epub3.images",
+      "id": 84,
+      "languages": [
+        "en"
+      ],
+      "sha256": "b82b1ad5cdd15439ab99e864741a0343f107adc796ce4326e44235a3f6f558a7",
+      "stratum": "en_popular",
+      "title": "Frankenstein; or, the modern prometheus",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Leblanc, Maurice"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/6133.epub3.images",
+      "id": 6133,
+      "languages": [
+        "en"
+      ],
+      "sha256": "f359ab60c629099dd477d2a4c1817a6f67ac692f85417607f9f7f27890953963",
+      "stratum": "en_popular",
+      "title": "The Extraordinary Adventures of Arsène Lupin, Gentleman-Burglar",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Stevenson, Robert Louis"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/42.epub3.images",
+      "id": 42,
+      "languages": [
+        "en"
+      ],
+      "sha256": "ca31c97329243eb65d6332473b45b5b544a663c1bfc1921bc6cab289c291321a",
+      "stratum": "en_popular",
+      "title": "The strange case of Dr. Jekyll and Mr. Hyde",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Lewis, M. G. (Matthew Gregory)"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/601.epub3.images",
+      "id": 601,
+      "languages": [
+        "en"
+      ],
+      "sha256": "120b34d7a9f5464918c5cc8215a48025fd5ab010aa1ae7bc441b1c24e330d855",
+      "stratum": "en_popular",
+      "title": "The Monk: A Romance",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Wagner, Richard"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/5197.epub3.images",
+      "id": 5197,
+      "languages": [
+        "en"
+      ],
+      "sha256": "9262bed1a385c7b7d11358158b29f312ce7c4a86690ad34fc0c737d440d65c85",
+      "stratum": "en_popular",
+      "title": "My Life — Volume 1",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Rousseau, Jean-Jacques"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/76639.epub3.images",
+      "id": 76639,
+      "languages": [
+        "en"
+      ],
+      "sha256": "63b62f018470f5bb8bf7f5ada6137c7b75f922f8f6fd620205a8d5704913bee3",
+      "stratum": "en_popular",
+      "title": "Eloisa : $b or, A series of original letters",
+      "translators": [
+        "Kenrick, W. (William)"
+      ]
+    },
+    {
+      "authors": [
+        "Chrétien, de Troyes, active 12th century"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/831.epub3.images",
+      "id": 831,
+      "languages": [
+        "en"
+      ],
+      "sha256": "2037f7677c730a51cd90340cf1b4dfab4687c804cfabcff14ee865d965c3378f",
+      "stratum": "en_popular",
+      "title": "Four Arthurian Romances",
+      "translators": [
+        "Comfort, William Wistar"
+      ]
+    },
+    {
+      "authors": [
+        "Marcus Aurelius, Emperor of Rome"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/2680.epub3.images",
+      "id": 2680,
+      "languages": [
+        "en"
+      ],
+      "sha256": "91b6183e7ef548dfd2926c6371b38bcfef3e19c9f3030d40f689e46f79e8b097",
+      "stratum": "en_popular",
+      "title": "Meditations",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Doyle, Arthur Conan"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/2852.epub3.images",
+      "id": 2852,
+      "languages": [
+        "en"
+      ],
+      "sha256": "893e86ac5cf5eb4ed19fae95a864d7c0dbb47f6d56979b61efdf57d4dcbdee8e",
+      "stratum": "en_popular",
+      "title": "The Hound of the Baskervilles",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Prévost, abbé"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/468.epub3.images",
+      "id": 468,
+      "languages": [
+        "en"
+      ],
+      "sha256": "012a09331e5c08c117dc3fe5f00966a536741be801f2f597b6ac6d1c4ad9187f",
+      "stratum": "en_popular",
+      "title": "Manon Lescaut",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Poe, Edgar Allan"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/2148.epub3.images",
+      "id": 2148,
+      "languages": [
+        "en"
+      ],
+      "sha256": "374dcb0a2a1e218914ed466ee9af72d9bfbe679a984f324e5ae840119bd3e76c",
+      "stratum": "en_popular",
+      "title": "The Works of Edgar Allan Poe — Volume 2",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Shakespeare, William"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/18143.epub3.images",
+      "id": 18143,
+      "languages": [
+        "fr"
+      ],
+      "sha256": "77597415ebcdc8a47ef8d1ddee0eb9efa08ce53fba33992c932d25980409e5bf",
+      "stratum": "fr",
+      "title": "Roméo et Juliette: Tragédie",
+      "translators": [
+        "Guizot, François"
+      ]
+    },
+    {
+      "authors": [
+        "Theuriet, André"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/78027.epub3.images",
+      "id": 78027,
+      "languages": [
+        "fr"
+      ],
+      "sha256": "899240e143449168e05230fdfd60d691b2aa044027ba37c0cb7a15870b87d20e",
+      "stratum": "fr",
+      "title": "Les enchantements de la forêt",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Féval, Paul"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/19919.epub3.images",
+      "id": 19919,
+      "languages": [
+        "fr"
+      ],
+      "sha256": "354b2ee2c1a8452c4b6df7a1aaf415fcf8e42df94a826120ed5e94828bbc4ec7",
+      "stratum": "fr",
+      "title": "Maman Léo: Les Habits Noirs Tome V",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Leblanc, Maurice"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/32854.epub3.images",
+      "id": 32854,
+      "languages": [
+        "fr"
+      ],
+      "sha256": "a0e87bf13134e92d99d70a782104aada13993245c63a25296def2bf3cce1bc97",
+      "stratum": "fr",
+      "title": "Arsène Lupin, gentleman-cambrioleur",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Verne, Jules"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/4791.epub3.images",
+      "id": 4791,
+      "languages": [
+        "fr"
+      ],
+      "sha256": "6a5f1f4ae7244950b6931af2a8cb1603df2bf9531fe3a2bf20ac0694b2f3a356",
+      "stratum": "fr",
+      "title": "Voyage au Centre de la Terre",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Leroux, Gaston"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/62215.epub3.images",
+      "id": 62215,
+      "languages": [
+        "fr"
+      ],
+      "sha256": "8c81cfbfc825a933a624f88a57445b3a85a6b7963932411a36c0f2bceac90813",
+      "stratum": "fr",
+      "title": "Le Fantôme de l'Opéra",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Dumas, Alexandre",
+        "Maquet, Auguste"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/13951.epub3.images",
+      "id": 13951,
+      "languages": [
+        "fr"
+      ],
+      "sha256": "9290105cefad414bf0a404b44ab2612e80197232b9a21b0e74aa1789477dafbd",
+      "stratum": "fr",
+      "title": "Les trois mousquetaires",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Dumas, Alexandre",
+        "Maquet, Auguste"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/17989.epub3.images",
+      "id": 17989,
+      "languages": [
+        "fr"
+      ],
+      "sha256": "8266bbcad0c3b24e73f59ad6682e3ab7c9e035ef226c89de3f3cdb7e8b2854f0",
+      "stratum": "fr",
+      "title": "Le comte de Monte-Cristo, Tome I",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Bussy, Roger de Rabutin, comte de"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/29049.epub3.images",
+      "id": 29049,
+      "languages": [
+        "fr"
+      ],
+      "sha256": "cb045d512863361b2868473a8c19ceae16cb09091a354a2f81b39e2e2544b5d5",
+      "stratum": "fr",
+      "title": "Histoire amoureuse des Gaules; suivie des Romans historico-satiriques du XVIIe siècle, Tome I",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Verne, Jules"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/14287.epub3.images",
+      "id": 14287,
+      "languages": [
+        "fr"
+      ],
+      "sha256": "8489a0f60a23bbe117201a1a6b3941bee1384aca7d8ff687c6648986ad4224a3",
+      "stratum": "fr",
+      "title": "L'île mystérieuse",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Jacques, Norbert"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/50285.epub3.images",
+      "id": 50285,
+      "languages": [
+        "de"
+      ],
+      "sha256": "3820a3aba3ae397bbb0682c60ad8abb2572608507d9d45102c84dd5ba5b30383",
+      "stratum": "de",
+      "title": "Dr. Mabuse, der Spieler : $b Roman",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Eichendorff, Joseph, Freiherr von"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/35312.epub3.images",
+      "id": 35312,
+      "languages": [
+        "de"
+      ],
+      "sha256": "8749a7134d4cc437eaa740455f6163135bb72341f2755a6b79af795a9ae35783",
+      "stratum": "de",
+      "title": "Aus dem Leben eines Taugenichts: Novelle",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Goethe, Johann Wolfgang von"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/2229.epub3.images",
+      "id": 2229,
+      "languages": [
+        "de"
+      ],
+      "sha256": "c9f43aa402c72e24e7fb9c0090b89206cd29b649eb93b561cf3e5d8eace055b4",
+      "stratum": "de",
+      "title": "Faust: Der Tragödie erster Teil",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Verworn, Max"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/78079.epub3.images",
+      "id": 78079,
+      "languages": [
+        "de"
+      ],
+      "sha256": "3b49620a369f0ff864f37b7a7efa4717b67f5985cb4710e59657a49c2134061c",
+      "stratum": "de",
+      "title": "Allgemeine Physiologie",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Kyselak, Josef"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/78026.epub3.images",
+      "id": 78026,
+      "languages": [
+        "de"
+      ],
+      "sha256": "25612b8c173510ff5b32fdbdbd595597b3f1e88b9ed67a6294f86acbe955c9ab",
+      "stratum": "de",
+      "title": "Skizzen einer Fußreise durch Oesterreich, Steiermark, Kärnthen, Salzburg, Berchtesgaden, Tirol und Baiern nach Wien, : $b nebst einer romantisch pittoresken Darstellung mehrerer Ritterburgen und ihrer Volkssagen, Gebirgsgegenden und Eisglätscher auf dieser Wanderung, unternommen im Jahre 1825 von Joseph Kyselak. (2/2)",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Polenz, Wilhelm von"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/78125.epub3.images",
+      "id": 78125,
+      "languages": [
+        "de"
+      ],
+      "sha256": "92f2d726306c8906f8df32c8fadf1e8c7461d41a54f1b79e5e01da3b2d364931",
+      "stratum": "de",
+      "title": "Liebe ist ewig : $b Roman",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Francé, R. H. (Raoul Heinrich)"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/78056.epub3.images",
+      "id": 78056,
+      "languages": [
+        "de"
+      ],
+      "sha256": "8b7a6da3ebf52689ecc0bf018eb3fc377b43e516efcef01f9b942eea6d2a6738",
+      "stratum": "de",
+      "title": "Urwald",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Falke, Robert"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/78030.epub3.images",
+      "id": 78030,
+      "languages": [
+        "de"
+      ],
+      "sha256": "07937c2428ecf4ae6968b473b54ef4c121eacf97f6e441c06e5536e46874bed2",
+      "stratum": "de",
+      "title": "Kloster Himmelpforte : $b Geschichtliches Drama in 4 Akten",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Harbou, Thea von"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/77073.epub3.images",
+      "id": 77073,
+      "languages": [
+        "de"
+      ],
+      "sha256": "5e2ea0ddb17e4b9f26920896daeff09fc464127ab5be827806b0539848d91c51",
+      "stratum": "de",
+      "title": "Die Flucht der Beate Hoyermann : $b Roman",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Sacher-Masoch, Leopold, Ritter von"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/56156.epub3.images",
+      "id": 56156,
+      "languages": [
+        "de"
+      ],
+      "sha256": "a887dc7d8281dabe77e4b47595f64eb5d4673e7857dc858f1d206d20d6d9f089",
+      "stratum": "de",
+      "title": "Venus im Pelz",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Dostoyevsky, Fyodor"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/61851.epub3.images",
+      "id": 61851,
+      "languages": [
+        "es"
+      ],
+      "sha256": "617ee1f1cc4279dbe316ecee07bf4c86acba2e9c15cde3aba35687bf68c83943",
+      "stratum": "es",
+      "title": "El crimen y el castigo",
+      "translators": [
+        "Pedraza y Páez, Pedro"
+      ]
+    },
+    {
+      "authors": [
+        "Hugo, Victor"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/78068.epub3.images",
+      "id": 78068,
+      "languages": [
+        "es"
+      ],
+      "sha256": "be74304378fe3bef3ea9df282e5c72c6674b9a4a997c0539bc3b0970bce5cb52",
+      "stratum": "es",
+      "title": "Los miserables - Tomo 2 (de 2)",
+      "translators": [
+        "J. A. R."
+      ]
+    },
+    {
+      "authors": [
+        "Unamuno, Miguel de"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/78052.epub3.images",
+      "id": 78052,
+      "languages": [
+        "es"
+      ],
+      "sha256": "1d25d4a06441e42d54e088a6178d595f3f2c462afb0fda950cc37d3bcfe223d6",
+      "stratum": "es",
+      "title": "Andanzas y visiones españolas",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Cervantes Saavedra, Miguel de"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/2000.epub3.images",
+      "id": 2000,
+      "languages": [
+        "es"
+      ],
+      "sha256": "8ee8c3650d397da45097214f21cff57d2ce8d035dfcd6585e0096e3bb74989fa",
+      "stratum": "es",
+      "title": "Don Quijote",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Pardo Bazán, Emilia, condesa de"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/55514.epub3.images",
+      "id": 55514,
+      "languages": [
+        "es"
+      ],
+      "sha256": "3bdae30d8c58b0d3c80f215aa1d3843c1929bc6729799511241842e17928e3f2",
+      "stratum": "es",
+      "title": "Cuentos de amor",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Pardo Bazán, Emilia, condesa de"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/52597.epub3.images",
+      "id": 52597,
+      "languages": [
+        "es"
+      ],
+      "sha256": "7c06cc2b8b7c7a186fbabe517314e4470dcf6841be9b99cd60cdc225c418fcf6",
+      "stratum": "es",
+      "title": "Insolación y Morriña (Dos historias amorosas)",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Homer"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/58221.epub3.images",
+      "id": 58221,
+      "languages": [
+        "es"
+      ],
+      "sha256": "5e0c831dbed7d233e73f0882ac8e9bdf3ca74d00fca89ea023e8185b32b61190",
+      "stratum": "es",
+      "title": "La Odisea",
+      "translators": [
+        "Segalá y Estalella, Luis"
+      ]
+    },
+    {
+      "authors": [
+        "Dante Alighieri"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/57303.epub3.images",
+      "id": 57303,
+      "languages": [
+        "es"
+      ],
+      "sha256": "2ba24826312ca1c831ceea366230170ee597977d62ebfd096931a1629ac4534c",
+      "stratum": "es",
+      "title": "La Divina Comedia",
+      "translators": [
+        "Aranda y Sanjuan, Manuel"
+      ]
+    },
+    {
+      "authors": [
+        "Dante Alighieri"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/1012.epub3.images",
+      "id": 1012,
+      "languages": [
+        "it"
+      ],
+      "sha256": "30899da4a1545128e5d20feeca797e164ef17bbbe5906d8a76b77eca19d76122",
+      "stratum": "it",
+      "title": "La Divina Commedia di Dante",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Verona, Guido da"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/38720.epub3.images",
+      "id": 38720,
+      "languages": [
+        "it"
+      ],
+      "sha256": "7723eaeb7292b76e512d37563022454ea0a4af3de3bc38dc360d27087eecd9d1",
+      "stratum": "it",
+      "title": "L'amore che torna: romanzo",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Albertazzi, Adolfo"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/38628.epub3.images",
+      "id": 38628,
+      "languages": [
+        "it"
+      ],
+      "sha256": "c94210a291ea514c1640ccf63452902205eb0eea18ba82dbca21fdae43abb2dd",
+      "stratum": "it",
+      "title": "Vecchie storie d'amore",
+      "translators": []
+    },
+    {
+      "authors": [
+        "De Amicis, Edmondo"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/61885.epub3.images",
+      "id": 61885,
+      "languages": [
+        "it"
+      ],
+      "sha256": "34807f0e31861e1a9c28d64235d17617a2c8ea6d11a3adf8c6de23ea6293d344",
+      "stratum": "it",
+      "title": "Ricordi d'infanzia e di scuola: seguìti da Bambole e marionette, Gente minima, Piccoli studenti, Adolescenti, Due di spade e due di cuori",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Collodi, Carlo"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/52484.epub3.images",
+      "id": 52484,
+      "languages": [
+        "it"
+      ],
+      "sha256": "51a4a28df89d52b7e1a86340ee8688a7d008801b8e014cb5acac8486a31431c9",
+      "stratum": "it",
+      "title": "Le avventure di Pinocchio: Storia di un burattino",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Dante Alighieri"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/1000.epub3.images",
+      "id": 1000,
+      "languages": [
+        "it"
+      ],
+      "sha256": "e0effe7a247b963a7c99f0352885a20dae468e441398e28f894a204ba05d6bf6",
+      "stratum": "it",
+      "title": "La Divina Commedia di Dante: Complete",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Figueiredo, Cândido de"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/31552.epub3.images",
+      "id": 31552,
+      "languages": [
+        "pt"
+      ],
+      "sha256": "14fd6b71e79c85617110827e41a428f55b7b89f2e7ad3d44a4c9350647aa1687",
+      "stratum": "pt",
+      "title": "Novo dicionário da língua portuguesa",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Machado de Assis"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/55752.epub3.images",
+      "id": 55752,
+      "languages": [
+        "pt"
+      ],
+      "sha256": "847b26bbc6bfefcf7cc323a94eacefd3c7a9657e66749cb360b77b34a3e994fd",
+      "stratum": "pt",
+      "title": "Dom Casmurro",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Botelho, Abel Acácio de Almeida"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/24919.epub3.images",
+      "id": 24919,
+      "languages": [
+        "pt"
+      ],
+      "sha256": "33c273123f3ada6cbf83587ead6a4102b822777ccf9372e497401581b396affd",
+      "stratum": "pt",
+      "title": "Amor Crioulo: vida argentina",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Camões, Luís de"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/3333.epub3.images",
+      "id": 3333,
+      "languages": [
+        "pt"
+      ],
+      "sha256": "13a571dfbaefe836d30a7ee9836361254335e6bfc27beb500abfb67d8076fabb",
+      "stratum": "pt",
+      "title": "Os Lusíadas",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Matull, Kurt",
+        "Blankensee, Theo von",
+        "Hageman, Felix (Leonard Felix)"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/76765.epub3.images",
+      "id": 76765,
+      "languages": [
+        "nl"
+      ],
+      "sha256": "62e9edd1586c9946bb4204e0848a7b13c8a9fb8583f2537513c7b289b113a642",
+      "stratum": "nl",
+      "title": "Lord Lister No. 0333: De liefde van een bokser",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Matull, Kurt",
+        "Blankensee, Theo von"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/76761.epub3.images",
+      "id": 76761,
+      "languages": [
+        "nl"
+      ],
+      "sha256": "9894f950303025386e4693cc0776a33fb4c84e72788e79d291033c4479b36ef5",
+      "stratum": "nl",
+      "title": "Lord Lister No. 0033: De Alarmkreet",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Matull, Kurt",
+        "Blankensee, Theo von",
+        "Hageman, Felix (Leonard Felix)"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/76865.epub3.images",
+      "id": 76865,
+      "languages": [
+        "nl"
+      ],
+      "sha256": "4c111746b992fabce1d22a423655cd7958e143b9bed04de92f24591cbe1008ff",
+      "stratum": "nl",
+      "title": "Lord Lister No. 0334: Onder de goudzoekers",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Austen, Jane"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/25946.epub3.images",
+      "id": 25946,
+      "languages": [
+        "nl"
+      ],
+      "sha256": "a0b8d1bd62f799ca10b0397201a61de44f16a308a548656342fc155889c5437e",
+      "stratum": "nl",
+      "title": "Gevoel en verstand",
+      "translators": [
+        "Loman-van Uildriks, Gonne"
+      ]
+    },
+    {
+      "authors": [
+        "Hemmo, Kaarlo"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/78071.epub3.images",
+      "id": 78071,
+      "languages": [
+        "fi"
+      ],
+      "sha256": "c343f45c07967f7dbefa5e57f053e8c9ee09e8ee74333c9b23f3f935bcd1a275",
+      "stratum": "fi",
+      "title": "Kaksi morsianta : $b Yksinäytöksinen pila",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Lehtonen, Joel"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/78058.epub3.images",
+      "id": 78058,
+      "languages": [
+        "fi"
+      ],
+      "sha256": "7b640ec99292602414c6a7ea761d250bc27efbd5eafda4bd7a7b7455338d5e6e",
+      "stratum": "fi",
+      "title": "Lintukoto : $b Muutamia päiväkirjan lehtiä",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Valkonen, Tatu"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/78007.epub3.images",
+      "id": 78007,
+      "languages": [
+        "fi"
+      ],
+      "sha256": "cd9aeccb85017ede33bec4924db8f9a471cf9af1f2c0c35f51f0e84701f9e82e",
+      "stratum": "fi",
+      "title": "Vanhaa viinaa uudessa leilissä : $b Pakinoita",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Järnefelt, Arvid"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/78049.epub3.images",
+      "id": 78049,
+      "languages": [
+        "fi"
+      ],
+      "sha256": "c700b3a7992024451f93fc6c86a7f4ea2011d5ec27ff32b165810f179252905c",
+      "stratum": "fi",
+      "title": "Sointula : $b Kolminäytöksinen näytelmä",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Verne, Jules"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/103.epub3.images",
+      "id": 103,
+      "languages": [
+        "en"
+      ],
+      "sha256": "8737e18e2ce7bc11246a7e589d35d2737f2e11d67cb7417021a3b8838e59d76b",
+      "stratum": "translated",
+      "title": "Around the World in Eighty Days",
+      "translators": [
+        "Towle, George M. (George Makepeace)"
+      ]
+    },
+    {
+      "authors": [
+        "Augustine, of Hippo, Saint"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/3296.epub3.images",
+      "id": 3296,
+      "languages": [
+        "en"
+      ],
+      "sha256": "3c612ed454f657752d35b75a33ee697780522426d8ad41ef0f1b9e0924d6e291",
+      "stratum": "translated",
+      "title": "The Confessions of St. Augustine",
+      "translators": [
+        "Pusey, E. B. (Edward Bouverie)"
+      ]
+    },
+    {
+      "authors": [
+        "Goethe, Johann Wolfgang von"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/2527.epub3.images",
+      "id": 2527,
+      "languages": [
+        "en"
+      ],
+      "sha256": "776d4c6574f65a54fb00caa63e9f1f0213a54622b5c4b093828faac387d7aacb",
+      "stratum": "translated",
+      "title": "The Sorrows of Young Werther",
+      "translators": [
+        "Boylan, R. Dillon (Richard Dillon)"
+      ]
+    },
+    {
+      "authors": [
+        "Pepys, Samuel"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/4200.epub3.images",
+      "id": 4200,
+      "languages": [
+        "en"
+      ],
+      "sha256": "741dc51fa1329f0453c688a07e89c2581a0ffa3375b8dc491a9425473ee461b7",
+      "stratum": "translated",
+      "title": "The Diary of Samuel Pepys — Complete",
+      "translators": [
+        "Bright, Mynors"
+      ]
+    },
+    {
+      "authors": [
+        "Suetonius"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/6400.epub3.images",
+      "id": 6400,
+      "languages": [
+        "en"
+      ],
+      "sha256": "0d8690597b888fb33a8bc1c9025601dd4d2ca4aaf2bcdd127eca2954a7ea562a",
+      "stratum": "translated",
+      "title": "The Lives of the Twelve Caesars, Complete",
+      "translators": [
+        "Thomson, Alexander, M.D."
+      ]
+    },
+    {
+      "authors": [
+        "Dostoyevsky, Fyodor"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/28054.epub3.images",
+      "id": 28054,
+      "languages": [
+        "en"
+      ],
+      "sha256": "53a93a0891b7590453d4665395baf18b8e24bd73401f5f9bc4199a5d3727878f",
+      "stratum": "translated",
+      "title": "The Brothers Karamazov",
+      "translators": [
+        "Garnett, Constance"
+      ]
+    },
+    {
+      "authors": [
+        "Homer"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/6130.epub3.images",
+      "id": 6130,
+      "languages": [
+        "en"
+      ],
+      "sha256": "5126efde56d2bacab918bef3c9bf6e8ca89128b34d1715d6dbafead1ff8b9b19",
+      "stratum": "translated",
+      "title": "The Iliad",
+      "translators": [
+        "Pope, Alexander"
+      ]
+    },
+    {
+      "authors": [
+        "Sienkiewicz, Henryk"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/9473.epub3.images",
+      "id": 9473,
+      "languages": [
+        "en"
+      ],
+      "sha256": "3d8215ce1143891519800267d87fa5d9d666a1bae2121fa66722b29eb08a84ca",
+      "stratum": "translated",
+      "title": "The Knights of the Cross, or, Krzyzacy: Historical Romance",
+      "translators": [
+        "Binion, Samuel Augustus"
+      ]
+    },
+    {
+      "authors": [
+        "Turgenev, Ivan Sergeevich"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/9911.epub3.images",
+      "id": 9911,
+      "languages": [
+        "en"
+      ],
+      "sha256": "cc0f08229b6a72b975a05894f32fccd62b93335f09d432d4e613302d76e01ef5",
+      "stratum": "translated",
+      "title": "The Torrents of Spring",
+      "translators": [
+        "Garnett, Constance"
+      ]
+    },
+    {
+      "authors": [
+        "Bédier, Joseph"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/14244.epub3.images",
+      "id": 14244,
+      "languages": [
+        "en"
+      ],
+      "sha256": "9853e89f0c35386b799d738c1ff704129503c904cb47bd916e71cb86f525a4b6",
+      "stratum": "translated",
+      "title": "The Romance of Tristan and Iseult",
+      "translators": [
+        "Belloc, Hilaire"
+      ]
+    },
+    {
+      "authors": [
+        "Dumas, Alexandre",
+        "Maquet, Auguste"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/1184.epub3.images",
+      "id": 1184,
+      "languages": [
+        "en"
+      ],
+      "sha256": "a588b7219a9ee4c449d5ccb90d886cdd2c4fa178480e200e0c15ca9110115d25",
+      "stratum": "multi_author",
+      "title": "The Count of Monte Cristo",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Dumas, Alexandre",
+        "Maquet, Auguste"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/1259.epub3.images",
+      "id": 1259,
+      "languages": [
+        "en"
+      ],
+      "sha256": "f2d1e371216ce6f2fab583504a155e5c784ed43e15d8cebce062daf957eac0f0",
+      "stratum": "multi_author",
+      "title": "Twenty years after",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Piper, H. Beam",
+        "McGuire, John J. (John Joseph)"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/20121.epub3.images",
+      "id": 20121,
+      "languages": [
+        "en"
+      ],
+      "sha256": "fa42efce118db8b87abe8633a4445ab30e1fc06e8b79a036406d79b9107cc010",
+      "stratum": "multi_author",
+      "title": "Lone Star Planet",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Prest, Thomas Peckett",
+        "Rymer, James Malcolm"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/59828.epub3.images",
+      "id": 59828,
+      "languages": [
+        "en"
+      ],
+      "sha256": "ce48c244a8c38b082d51bf37acfe3a815a6435ce0fa0701c3646493b9fca495d",
+      "stratum": "multi_author",
+      "title": "The String of Pearls; Or, The Barber of Fleet Street. A Domestic Romance.",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Garrett, Randall",
+        "Janifer, Laurence M."
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/30434.epub3.images",
+      "id": 30434,
+      "languages": [
+        "en"
+      ],
+      "sha256": "bde3e219ab65c2b37b62512c99a205a44bd9c85e5621337f217c004bd1ca6bb8",
+      "stratum": "multi_author",
+      "title": "Occasion ... for Disaster",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Grimm, Jacob",
+        "Grimm, Wilhelm"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/2591.epub3.images",
+      "id": 2591,
+      "languages": [
+        "en"
+      ],
+      "sha256": "5a735764974c07c57c595aae16dd56c8d295698555705528865c9a7112ef2f6e",
+      "stratum": "multi_author",
+      "title": "Grimms' Fairy Tales",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Meredith, George"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/4499.epub3.images",
+      "id": 4499,
+      "languages": [
+        "en"
+      ],
+      "sha256": "2cb90752a5f9a41f2cd713095a11665082d42030f60313f4aa609c7e6723e58e",
+      "stratum": "collections",
+      "title": "Complete Short Works of George Meredith",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Austen, Jane"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/31100.epub3.images",
+      "id": 31100,
+      "languages": [
+        "en"
+      ],
+      "sha256": "fd2364e7341c29ba3b454f255859ff341b9796270a2100126eabe304f4da3d9b",
+      "stratum": "collections",
+      "title": "The Complete Project Gutenberg Works of Jane Austen: A Linked Index of all PG Editions of Jane Austen",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Whitman, Walt"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/8813.epub3.images",
+      "id": 8813,
+      "languages": [
+        "en"
+      ],
+      "sha256": "2cbf12b2cada8e200354cefd3efedb68c446842532ce09731b2287d6080172f1",
+      "stratum": "collections",
+      "title": "Complete Prose Works: Specimen Days and Collect, November Boughs and Goodbye My Fancy",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Nietzsche, Friedrich Wilhelm"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/52190.epub3.images",
+      "id": 52190,
+      "languages": [
+        "en"
+      ],
+      "sha256": "7a2b244adf3aae33d4d7c9fcd9839594d8eb8be6e2c6d264dd4a38db4deb5aac",
+      "stratum": "collections",
+      "title": "Ecce Homo: Complete Works, Volume Seventeen",
+      "translators": [
+        "Ludovici, Anthony M. (Anthony Mario)",
+        "Cohn, Paul V. (Paul Victor)"
+      ]
+    },
+    {
+      "authors": [
+        "Nietzsche, Friedrich Wilhelm"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/52319.epub3.images",
+      "id": 52319,
+      "languages": [
+        "en"
+      ],
+      "sha256": "a77c9e2ff0e1bcc3ef7228d7d9ebdbe8a327ed2963e8a3794c156d767169879f",
+      "stratum": "collections",
+      "title": "The Genealogy of Morals: The Complete Works, Volume Thirteen, edited by Dr. Oscar Levy.",
+      "translators": [
+        "Kennedy, J. M. (John McFarland)",
+        "Samuel, Horace Barnett"
+      ]
+    },
+    {
+      "authors": [
+        "Nietzsche, Friedrich Wilhelm"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/52263.epub3.images",
+      "id": 52263,
+      "languages": [
+        "en"
+      ],
+      "sha256": "75e1d1b4a13589f199e327fca9fc94f4170a24da70679ebb432d3e920bb285b5",
+      "stratum": "collections",
+      "title": "The Twilight of the Idols; or, How to Philosophize with the Hammer. The Antichrist: Complete Works, Volume Sixteen",
+      "translators": [
+        "Ludovici, Anthony M. (Anthony Mario)"
+      ]
+    },
+    {
+      "authors": [
+        "Poe, Edgar Allan"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/2147.epub3.images",
+      "id": 2147,
+      "languages": [
+        "en"
+      ],
+      "sha256": "361eda7e567a47c0ca13707362588e7bd11e819065ade09f0fb64f61b36245a4",
+      "stratum": "poetry",
+      "title": "The Works of Edgar Allan Poe — Volume 1",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Scott, Walter"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/3011.epub3.images",
+      "id": 3011,
+      "languages": [
+        "en"
+      ],
+      "sha256": "989621ac78cd3832616560521ceb9215067f1495b1110ceb74585d98478bb537",
+      "stratum": "poetry",
+      "title": "The Lady of the Lake",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Stevenson, Burton Egbert"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/2620.epub3.images",
+      "id": 2620,
+      "languages": [
+        "en"
+      ],
+      "sha256": "fb0a16398226d861a191c154f7fb6fd53e0abeb1649c32fcf10db4148acfff94",
+      "stratum": "poetry",
+      "title": "The Home Book of Verse — Volume 2",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Browning, Elizabeth Barrett"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/2002.epub3.images",
+      "id": 2002,
+      "languages": [
+        "en"
+      ],
+      "sha256": "7203c9426ac58781ddff8822cebc2c629808f60daff7c9d1ce648cb030a060f8",
+      "stratum": "poetry",
+      "title": "Sonnets from the Portuguese",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Goethe, Johann Wolfgang von"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/7889.epub3.images",
+      "id": 7889,
+      "languages": [
+        "en"
+      ],
+      "sha256": "245f768ecb387613cdcf520bea16f54ffeea835bdc273260ba5fedd76fd1618e",
+      "stratum": "poetry",
+      "title": "Erotica Romana",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Hope, Laurence"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/8197.epub3.images",
+      "id": 8197,
+      "languages": [
+        "en"
+      ],
+      "sha256": "4d0d0ef495a1b5e59bb026f0173494be8f858ad76fff0a3a9ced139967037c87",
+      "stratum": "poetry",
+      "title": "India's Love Lyrics",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Shakespeare, William"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/1510.epub3.images",
+      "id": 1510,
+      "languages": [
+        "en"
+      ],
+      "sha256": "c0a18c8c17dd276799840eeb346dd34c52e64ec6d224310866fdc63a4cdfd040",
+      "stratum": "drama",
+      "title": "Love's Labour's Lost",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Shakespeare, William"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/1523.epub3.images",
+      "id": 1523,
+      "languages": [
+        "en"
+      ],
+      "sha256": "87aaeeca845e35efc503b8bfb32327123bb8ac5ecb351a46b39b077c418fb39b",
+      "stratum": "drama",
+      "title": "As You Like It",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Shakespeare, William"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/1514.epub3.images",
+      "id": 1514,
+      "languages": [
+        "en"
+      ],
+      "sha256": "03f3c7241809696ce1bad6590b3b338707bd7d612c123a64f91d03ed3c5cc074",
+      "stratum": "drama",
+      "title": "A Midsummer Night's Dream",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Shakespeare, William"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/1112.epub3.images",
+      "id": 1112,
+      "languages": [
+        "en"
+      ],
+      "sha256": "cd45f344ef8deba6aee40a29f2448cfa5de9e8242e4258d3359b19b28615cb24",
+      "stratum": "drama",
+      "title": "Romeo and Juliet",
+      "translators": []
+    },
+    {
+      "authors": [
+        "Sophocles"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/27673.epub3.images",
+      "id": 27673,
+      "languages": [
+        "en"
+      ],
+      "sha256": "bdfd9ca322f0b296e54ca128ade17de29f521404b63eeb6955ac113b32ef7ed2",
+      "stratum": "drama",
+      "title": "Oedipus King of Thebes: Translated into English Rhyming Verse with Explanatory Notes",
+      "translators": [
+        "Murray, Gilbert"
+      ]
+    },
+    {
+      "authors": [
+        "Aristophanes"
+      ],
+      "epub_url": "https://www.gutenberg.org/ebooks/7700.epub3.images",
+      "id": 7700,
+      "languages": [
+        "en"
+      ],
+      "sha256": "94662678526c1003b8eb31f0f5fa5e1ed9b9bc2ba56c978c647b694d93e988b0",
+      "stratum": "drama",
+      "title": "Lysistrata",
+      "translators": [
+        "Lindsay, Jack"
+      ]
+    }
+  ]
+}

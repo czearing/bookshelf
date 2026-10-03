@@ -1,0 +1,134 @@
+{
+ "books": [
+  {
+   "id": "72f3fc20db0ec5dd51ad307e019b0a2b",
+   "stratum": "libgen_pd",
+   "title": "The Adventures of Tom Sawyer",
+   "authors": [
+    "Mark Twain"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Adventures of Tom Sawyer",
+   "source_authors": "Mark Twain"
+  },
+  {
+   "id": "3cfad94b0ab05397b527708aa9bea5b6",
+   "stratum": "libgen_pd",
+   "title": "The Adventures of Tom Sawyer",
+   "authors": [
+    "Mark Twain"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Adventures of Tom Sawyer",
+   "source_authors": "Mark Twain,"
+  },
+  {
+   "id": "9db590bda0843eb7f6af709020f2f99a",
+   "stratum": "libgen_pd",
+   "title": "Adventures of Huckleberry Finn",
+   "authors": [
+    "Mark Twain"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Adventures of Huckleberry Finn (Tom Sawyer\u2019s Comrade)",
+   "source_authors": "Mark Twain"
+  },
+  {
+   "id": "ccf6d54c4e9ea4943debeaa28ff0cab2",
+   "stratum": "libgen_pd",
+   "title": "Adventures of Huckleberry Finn",
+   "authors": [
+    "Mark Twain"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Adventures of Huckleberry Finn",
+   "source_authors": "Mark Twain"
+  },
+  {
+   "id": "4b919f25b4c3b1b2a6b9e4cab310f7b2",
+   "stratum": "libgen_pd",
+   "title": "The Time Machine",
+   "authors": [
+    "H. G. Wells"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Time Machine",
+   "source_authors": "Wells, H. G."
+  },
+  {
+   "id": "5d6c7aa0c82385c4e6aa06f0a235cd0e",
+   "stratum": "libgen_pd",
+   "title": "The Time Machine",
+   "authors": [
+    "H. G. Wells"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Return of the Time Machine",
+   "source_authors": "H G Wells; Egon Friedell & Eddy C Bertin (transl)"
+  },
+  {
+   "id": "7b85520f982362b26160e9771c018df7",
+   "stratum": "libgen_pd",
+   "title": "The War of the Worlds",
+   "authors": [
+    "H. G. Wells"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The War of the Worlds",
+   "source_authors": "Wells, H. G."
+  },
+  {
+   "id": "500669413d141e1793f7a7716fc234bb",
+   "stratum": "libgen_pd",
+   "title": "The War of the Worlds",
+   "authors": [
+    "H. G. Wells"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The War of the Worlds",
+   "source_authors": "Wells, H. G."
+  },
+  {
+   "id": "c038c7738c104a0b0c66460b33a4d02a",
+   "stratum": "libgen_pd",
+   "title": "The Invisible Man",
+   "authors": [
+    "H. G. Wells"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Time Machine/The Invisible Man",
+   "source_authors": "Adam, Alfred Mac; Wells, H G"
+  },
+  {
+   "id": "57e7a4886448bbc2b7dcb1a8ba07efdd",
+   "stratum": "libgen_pd",
+   "title": "Twenty Thousand Leagues Under the Sea",
+   "authors": [
+    "Jules Verne"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Twenty Thousand Leagues Under the Sea",
+   "source_authors": "Jules Verne; Marie Sexton,"
+  }
+ ]
+}

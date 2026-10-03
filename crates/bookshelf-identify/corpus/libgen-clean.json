@@ -1,0 +1,641 @@
+{
+ "books": [
+  {
+   "id": "72f3fc20db0ec5dd51ad307e019b0a2b",
+   "stratum": "libgen_pd",
+   "title": "The Adventures of Tom Sawyer",
+   "authors": [
+    "Mark Twain"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Adventures of Tom Sawyer",
+   "source_authors": "Mark Twain"
+  },
+  {
+   "id": "3cfad94b0ab05397b527708aa9bea5b6",
+   "stratum": "libgen_pd",
+   "title": "The Adventures of Tom Sawyer",
+   "authors": [
+    "Mark Twain"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Adventures of Tom Sawyer",
+   "source_authors": "Mark Twain,"
+  },
+  {
+   "id": "9db590bda0843eb7f6af709020f2f99a",
+   "stratum": "libgen_pd",
+   "title": "Adventures of Huckleberry Finn",
+   "authors": [
+    "Mark Twain"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Adventures of Huckleberry Finn (Tom Sawyer\u2019s Comrade)",
+   "source_authors": "Mark Twain"
+  },
+  {
+   "id": "ccf6d54c4e9ea4943debeaa28ff0cab2",
+   "stratum": "libgen_pd",
+   "title": "Adventures of Huckleberry Finn",
+   "authors": [
+    "Mark Twain"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Adventures of Huckleberry Finn",
+   "source_authors": "Mark Twain"
+  },
+  {
+   "id": "4b919f25b4c3b1b2a6b9e4cab310f7b2",
+   "stratum": "libgen_pd",
+   "title": "The Time Machine",
+   "authors": [
+    "H. G. Wells"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Time Machine",
+   "source_authors": "Wells, H. G."
+  },
+  {
+   "id": "5d6c7aa0c82385c4e6aa06f0a235cd0e",
+   "stratum": "libgen_pd",
+   "title": "The Time Machine",
+   "authors": [
+    "H. G. Wells"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Return of the Time Machine",
+   "source_authors": "H G Wells; Egon Friedell & Eddy C Bertin (transl)"
+  },
+  {
+   "id": "7b85520f982362b26160e9771c018df7",
+   "stratum": "libgen_pd",
+   "title": "The War of the Worlds",
+   "authors": [
+    "H. G. Wells"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The War of the Worlds",
+   "source_authors": "Wells, H. G."
+  },
+  {
+   "id": "500669413d141e1793f7a7716fc234bb",
+   "stratum": "libgen_pd",
+   "title": "The War of the Worlds",
+   "authors": [
+    "H. G. Wells"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The War of the Worlds",
+   "source_authors": "Wells, H. G."
+  },
+  {
+   "id": "c038c7738c104a0b0c66460b33a4d02a",
+   "stratum": "libgen_pd",
+   "title": "The Invisible Man",
+   "authors": [
+    "H. G. Wells"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Time Machine/The Invisible Man",
+   "source_authors": "Adam, Alfred Mac; Wells, H G"
+  },
+  {
+   "id": "57e7a4886448bbc2b7dcb1a8ba07efdd",
+   "stratum": "libgen_pd",
+   "title": "Twenty Thousand Leagues Under the Sea",
+   "authors": [
+    "Jules Verne"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Twenty Thousand Leagues Under the Sea",
+   "source_authors": "Jules Verne; Marie Sexton,"
+  },
+  {
+   "id": "433da7c3bb94a6c128f7e4de710891a7",
+   "stratum": "libgen_pd",
+   "title": "Around the World in Eighty Days",
+   "authors": [
+    "Jules Verne"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Around the World in Eighty Days",
+   "source_authors": "Jules Verne; George Makepeace Towle (transl)"
+  },
+  {
+   "id": "f188bd3b53f8e48ebf044698b1fbbd2b",
+   "stratum": "libgen_pd",
+   "title": "Around the World in Eighty Days",
+   "authors": [
+    "Jules Verne"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Around the World in Eighty Days",
+   "source_authors": "Jules Verne, Translated by George Makepeace Towle"
+  },
+  {
+   "id": "79d0364acd6a1d0973e4955fa03f8cd5",
+   "stratum": "libgen_pd",
+   "title": "Crime and Punishment",
+   "authors": [
+    "Fyodor Dostoyevsky"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Crime and Punishment",
+   "source_authors": "Fyodor Dostoyevsky"
+  },
+  {
+   "id": "98066e1c99ca565365b5aaa62df041af",
+   "stratum": "libgen_pd",
+   "title": "Crime and Punishment",
+   "authors": [
+    "Fyodor Dostoyevsky"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Crime and Punishment",
+   "source_authors": "Fyodor Dostoyevsky"
+  },
+  {
+   "id": "76d2e89f47d28c2e8994e8f903f7ccb8",
+   "stratum": "libgen_pd",
+   "title": "The Brothers Karamazov",
+   "authors": [
+    "Fyodor Dostoyevsky"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Brothers Karamazov",
+   "source_authors": "Fyodor Dostoyevsky"
+  },
+  {
+   "id": "e221cbb7f84ca708dfe51258d6ea9404",
+   "stratum": "libgen_pd",
+   "title": "The Brothers Karamazov",
+   "authors": [
+    "Fyodor Dostoyevsky"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Brothers Karamazov",
+   "source_authors": "Fyodor Dostoyevsky"
+  },
+  {
+   "id": "157d9993d05ed5537be7aa2d20639228",
+   "stratum": "libgen_pd",
+   "title": "War and Peace",
+   "authors": [
+    "Leo Tolstoy"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "War and Peace",
+   "source_authors": "Leo Tolstoy [Tolstoy, Lev Nikolayevich]"
+  },
+  {
+   "id": "eb5910b749d767a96ff1518d96b84f19",
+   "stratum": "libgen_pd",
+   "title": "War and Peace",
+   "authors": [
+    "Leo Tolstoy"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "War and Peace",
+   "source_authors": "Leo Tolstoy [Tolstoy, Lev Nikolayevich]"
+  },
+  {
+   "id": "a0273543fcc32289d349e8e02f510e17",
+   "stratum": "libgen_pd",
+   "title": "Anna Karenina",
+   "authors": [
+    "Leo Tolstoy"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Anna Karenina",
+   "source_authors": "Leo Tolstoy; Lev Nikolayevich Tolstoy"
+  },
+  {
+   "id": "19809a0151e6d60ee82ed40d5e4c6022",
+   "stratum": "libgen_pd",
+   "title": "Anna Karenina",
+   "authors": [
+    "Leo Tolstoy"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Anna Karenina (Marian Schwartz Translation) Margellos World Republic of Letters",
+   "source_authors": "Leo Tolstoy,"
+  },
+  {
+   "id": "a45f8ae8cb56bceca640dd0b68b2a737",
+   "stratum": "libgen_pd",
+   "title": "Jane Eyre",
+   "authors": [
+    "Charlotte Bronte"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Jane Eyre",
+   "source_authors": "Charlotte Bronte"
+  },
+  {
+   "id": "8a41a8ad4872a80dc7c0a435a0894be0",
+   "stratum": "libgen_pd",
+   "title": "Wuthering Heights",
+   "authors": [
+    "Emily Bronte"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Wuthering Heights",
+   "source_authors": "Emily Bronte"
+  },
+  {
+   "id": "6a18f91668da6a1966863c034b3bd9bf",
+   "stratum": "libgen_pd",
+   "title": "Dracula",
+   "authors": [
+    "Bram Stoker"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Dracula Bram Stoker",
+   "source_authors": "Bram Stoker"
+  },
+  {
+   "id": "4182de9e40974224b246b9ddaaa851ab",
+   "stratum": "libgen_pd",
+   "title": "Dracula",
+   "authors": [
+    "Bram Stoker"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Dracula",
+   "source_authors": "Bram Stoker"
+  },
+  {
+   "id": "3e8dd2fc5fc68af72723447c5e22638a",
+   "stratum": "libgen_pd",
+   "title": "Frankenstein",
+   "authors": [
+    "Mary Shelley"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Frankenstein: Or, the Modern Prometheus",
+   "source_authors": "Mary Shelley"
+  },
+  {
+   "id": "28704bab474f1e7ac75380444d590144",
+   "stratum": "libgen_pd",
+   "title": "Frankenstein",
+   "authors": [
+    "Mary Shelley"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Frankenstein: Or, the Modern Prometheus",
+   "source_authors": "Mary Shelley"
+  },
+  {
+   "id": "0cfb885b31506a08dcfafcf10cbbb9bd",
+   "stratum": "libgen_pd",
+   "title": "The Picture of Dorian Gray",
+   "authors": [
+    "Oscar Wilde"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Picture of Dorian Gray (original magazine serial) 13 part serial",
+   "source_authors": "Oscar Wilde,"
+  },
+  {
+   "id": "4b20f5a6c891e5171bf05aec9e2a0a4a",
+   "stratum": "libgen_pd",
+   "title": "Treasure Island",
+   "authors": [
+    "Robert Louis Stevenson"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Treasure Island",
+   "source_authors": "Robert Louis Stevenson"
+  },
+  {
+   "id": "a87876606b1d67924cfde17d214e0bc5",
+   "stratum": "libgen_pd",
+   "title": "Heart of Darkness",
+   "authors": [
+    "Joseph Conrad"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Heart Of Darkness",
+   "source_authors": "Joseph Conrad,"
+  },
+  {
+   "id": "960e72be85c07c902f5a4fd79c1da90c",
+   "stratum": "libgen_pd",
+   "title": "The Count of Monte Cristo",
+   "authors": [
+    "Alexandre Dumas"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Count of Monte Cristo: Alexandre Dumas (Grapevine Press)",
+   "source_authors": "Alexandre Dumas"
+  },
+  {
+   "id": "8592a01a06ae81b8d151e7b3cdf13fe6",
+   "stratum": "libgen_pd",
+   "title": "The Count of Monte Cristo",
+   "authors": [
+    "Alexandre Dumas"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Count of Monte Cristo",
+   "source_authors": "Alexandre Dumas,"
+  },
+  {
+   "id": "147f62694900bd220001a2203d3034c1",
+   "stratum": "libgen_pd",
+   "title": "Don Quixote",
+   "authors": [
+    "Miguel de Cervantes"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Adventures of Don Quixote de la Mancha. Translated from the Spanish of Miguel de Cervantes Saavedra by Motteux",
+   "source_authors": "Cervantes Saavedra, Miguel de, 1547-1616"
+  },
+  {
+   "id": "d697fc251ec310af931deb0b77937f1d",
+   "stratum": "libgen_pd",
+   "title": "Don Quixote",
+   "authors": [
+    "Miguel de Cervantes"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Adventures of Don Quixote de la Mancha. Translated from the Spanish of Miguel de Cervantes Saavedra by Motteux",
+   "source_authors": "Cervantes Saavedra, Miguel de, 1547-1616"
+  },
+  {
+   "id": "b577cd3697b8d910401d137d958cc179",
+   "stratum": "libgen_pd",
+   "title": "Walden",
+   "authors": [
+    "Henry David Thoreau"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Walden",
+   "source_authors": "Henry David Thoreau"
+  },
+  {
+   "id": "142e026f75d160a7631b5608a102b5b5",
+   "stratum": "libgen_pd",
+   "title": "Walden",
+   "authors": [
+    "Henry David Thoreau"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Walden",
+   "source_authors": "Henry David Thoreau"
+  },
+  {
+   "id": "920dc95b392a0bc6b5c27db8caa588aa",
+   "stratum": "libgen_pd",
+   "title": "The Scarlet Letter",
+   "authors": [
+    "Nathaniel Hawthorne"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Scarlet Letter",
+   "source_authors": "Nathaniel Hawthorne"
+  },
+  {
+   "id": "6761b204d3465a0ed501df03fe5eab60",
+   "stratum": "libgen_pd",
+   "title": "The Scarlet Letter",
+   "authors": [
+    "Nathaniel Hawthorne"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Scarlet Letter",
+   "source_authors": "Nathaniel Hawthorne"
+  },
+  {
+   "id": "5e70ed900ece1a4c0926f419d91a75c1",
+   "stratum": "libgen_pd",
+   "title": "Little Women",
+   "authors": [
+    "Louisa May Alcott"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Little Women",
+   "source_authors": "Louisa May Alcott"
+  },
+  {
+   "id": "5181f7f2a66dbcf9b8e6481ade679cfe",
+   "stratum": "libgen_pd",
+   "title": "Little Women",
+   "authors": [
+    "Louisa May Alcott"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Little Women",
+   "source_authors": "Louisa May Alcott"
+  },
+  {
+   "id": "9a9ce7218e52b5436e4aa4a92b610cc8",
+   "stratum": "libgen_pd",
+   "title": "Peter Pan",
+   "authors": [
+    "J. M. Barrie"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Peter Pan",
+   "source_authors": "Barrie, J. M."
+  },
+  {
+   "id": "3eed43470e553b8499684d9a4cabe6e9",
+   "stratum": "libgen_pd",
+   "title": "The Wind in the Willows",
+   "authors": [
+    "Kenneth Grahame"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "THE WIND IN THE WILLOWS",
+   "source_authors": "Kenneth, Grahame"
+  },
+  {
+   "id": "e06aa77c2145ec8c25d57158e4ed20a4",
+   "stratum": "libgen_pd",
+   "title": "The Wind in the Willows",
+   "authors": [
+    "Kenneth Grahame"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Wind in the Willows",
+   "source_authors": "Kenneth Grahame,"
+  },
+  {
+   "id": "e21852e55cf60168773784434c67f8b2",
+   "stratum": "libgen_pd",
+   "title": "Middlemarch",
+   "authors": [
+    "George Eliot"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Middlemarch",
+   "source_authors": "George Eliot"
+  },
+  {
+   "id": "a10275e62b5966487c710fe382a51bd6",
+   "stratum": "libgen_pd",
+   "title": "Middlemarch",
+   "authors": [
+    "George Eliot"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Middlemarch",
+   "source_authors": "George Eliot"
+  },
+  {
+   "id": "7e98ce0c04fb5d1848ba46417ff3119b",
+   "stratum": "libgen_pd",
+   "title": "Vanity Fair",
+   "authors": [
+    "William Makepeace Thackeray"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Vanity fair",
+   "source_authors": "William Makepeace Thackeray, Nicholas Dames"
+  },
+  {
+   "id": "e438bb7dc0e338d2ab5661172ed1da7b",
+   "stratum": "libgen_pd",
+   "title": "The Odyssey",
+   "authors": [
+    "Homer"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Odyssey of Homer",
+   "source_authors": "Homer"
+  },
+  {
+   "id": "8badd91e94f18c48ad9505e6b5e3c2e3",
+   "stratum": "libgen_pd",
+   "title": "The Odyssey",
+   "authors": [
+    "Homer"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "The Odyssey of Homer",
+   "source_authors": "Homer"
+  },
+  {
+   "id": "a74c31bfa9c59c203132cf50c595a09e",
+   "stratum": "libgen_pd",
+   "title": "Candide",
+   "authors": [
+    "Voltaire"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Candide",
+   "source_authors": "Voltaire"
+  },
+  {
+   "id": "dbe8ea090e358dbac5b20391cb5ba649",
+   "stratum": "libgen_pd",
+   "title": "Candide",
+   "authors": [
+    "Voltaire"
+   ],
+   "languages": [
+    "en"
+   ],
+   "source_title": "Candide",
+   "source_authors": "Voltaire"
+  }
+ ]
+}
