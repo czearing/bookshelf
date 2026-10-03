@@ -9,6 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 bookshelf-core     = { path = "../bookshelf-core" }
+bookshelf-identify = { path = "../bookshelf-identify" }
 clap               = { version = "4", features = ["derive"] }
 tokio              = { version = "1", features = ["full"] }
 anyhow             = "1"

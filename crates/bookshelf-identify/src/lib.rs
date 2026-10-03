@@ -1,3 +1,4 @@
+pub mod cli;
 pub mod cover;
 pub mod epub;
 pub mod google;

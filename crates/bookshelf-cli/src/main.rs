@@ -22,6 +22,9 @@ struct Cli {
 enum Commands {
     /// Scan a directory recursively for EPUB files and populate the library
     Scan(ScanArgs),
+    /// Verify each book's identity (Google Books, Open Library, text witnesses), then
+    /// safely retag, add covers and rename. Preview by default; run `scan` afterwards
+    Identify(bookshelf_identify::cli::Args),
     /// List all books in the library
     List(ListArgs),
     /// Fuzzy-search the library by title or author
@@ -572,11 +575,19 @@ async fn async_run(cli: Cli) -> anyhow::Result<()> {
         return cmd_config(args, &db_path, &library_dir, &language).await;
     }
 
+    // Identification works on files and keeps its own resumable state, so it does not
+    // need the database; `scan` afterwards ingests the corrected books.
+    if let Commands::Identify(args) = cli.command {
+        let code = bookshelf_identify::cli::run(args).await?;
+        std::process::exit(code);
+    }
+
     let pool = db::open(&db_path)
         .await
         .with_context(|| format!("cannot open database at {}", db_path.display()))?;
 
     match cli.command {
+        Commands::Identify(_) => unreachable!("handled above"),
         Commands::Scan(args) => cmd_scan(&pool, &args, &library_dir).await?,
         Commands::List(args) => cmd_list(&pool, &args).await?,
         Commands::Search(args) => cmd_search(&pool, &args.query).await?,

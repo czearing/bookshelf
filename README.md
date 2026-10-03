@@ -88,6 +88,28 @@ For every book where `enrichment_attempted = 0`:
 After a successful enrichment, sets `enriched_at` to the current UTC
 timestamp and `enrichment_attempted = 1`.
 
+## Verified identification (`bookshelf identify`)
+
+`identify` is the safe way to fix names and tags. It identifies each EPUB against
+Google Books and Open Library, corroborates the *work* with the title page, the cover
+and full-text passages, and only then renames, retags and adds a cover. Anything
+uncertain (omnibus editions, conflicting tags, unknown books) is left untouched and
+put on a review queue instead of being guessed.
+
+```
+export GOOGLE_BOOKS_API_KEY=...            # never commit a key
+bookshelf identify D:\Books --state ids.db                 # preview
+bookshelf identify D:\Books --state ids.db --apply --tag   # rename + retag + cover
+bookshelf identify --state ids.db --queue 20                # books needing a decision
+bookshelf identify --undo D:\Books\.book-manager-backup    # reverse tagging
+bookshelf scan D:\Books --no-enrich                         # then ingest the clean files
+```
+
+Originals are backed up by hash, every write is re-read and verified, and duplicates
+are numbered, never overwritten. After `identify`, scan with `--no-enrich`: the
+legacy enrichment takes the first title/author search hit and can attach the ISBN of
+an unrelated modern reprint. See `crates/bookshelf-identify/README.md` for details.
+
 ## Running tests
 
 ```
